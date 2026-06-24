@@ -10,9 +10,9 @@ pub async fn connect_quic(addr: &str, config: &quinn::ClientConfig) -> Result<Ne
         .map_err(|e| NetworkError::QuicFailed(format!("invalid address {addr}: {e}")))?;
 
     let local_addr: SocketAddr = if server_addr.is_ipv4() {
-        "0.0.0.0:0".parse().unwrap()
+        SocketAddr::new(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), 0)
     } else {
-        "[::]:0".parse().unwrap()
+        SocketAddr::new(std::net::IpAddr::V6(std::net::Ipv6Addr::UNSPECIFIED), 0)
     };
 
     let endpoint = quinn::Endpoint::client(local_addr)
@@ -33,7 +33,7 @@ pub async fn connect_quic(addr: &str, config: &quinn::ClientConfig) -> Result<Ne
     Ok(NetworkChannel {
         protocol: Protocol::Quic,
         addr: addr.to_string(),
-        connection: Some(connection),
+        stream: Some(crate::network::ConnectionStream::Quic(connection)),
     })
 }
 

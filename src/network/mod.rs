@@ -39,11 +39,25 @@ impl std::fmt::Display for Protocol {
     }
 }
 
+pub enum ConnectionStream {
+    Quic(quinn::Connection),
+    TcpTls(tokio_rustls::client::TlsStream<tokio::net::TcpStream>),
+}
+
+impl std::fmt::Debug for ConnectionStream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Quic(_) => write!(f, "Quic(..)"),
+            Self::TcpTls(_) => write!(f, "TcpTls(..)"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct NetworkChannel {
     pub protocol: Protocol,
     pub addr: String,
-    pub connection: Option<quinn::Connection>,
+    pub stream: Option<ConnectionStream>,
 }
 
 #[async_trait::async_trait]
@@ -91,7 +105,7 @@ async fn fallback_to_tcp(addr: &str, tls: &TlsContext) -> (NetworkChannel, Proto
                 NetworkChannel {
                     protocol: Protocol::Tcp,
                     addr: addr.to_string(),
-                    connection: None,
+                    stream: None,
                 },
                 Protocol::Tcp,
             )

@@ -64,7 +64,7 @@ tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 tracing-appender = "0.2"
 
 # Database / Storage
-sled = "0.34"
+rocksdb = "0.24.0"
 
 # Rate limiting
 tower = { version = "0.5", features = ["limit", "buffer", "util"] }
@@ -77,13 +77,13 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 clap = { version = "4", features = ["derive"] }
 toml = "0.8"
+tempfile = "3"
 
 # Config
 config = "0.14"
 
 [dev-dependencies]
 rstest = "0.23"
-tempfile = "3"
 tracing-test = "0.2"
 
 [profile.release]

@@ -22,6 +22,8 @@ pub enum BlockchainError {
     Http(String),
     #[error("crypto error: {0}")]
     Crypto(#[from] crypto::CryptoError),
+    #[error("database error: {0}")]
+    DatabaseError(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,12 +76,13 @@ pub struct SubstrateRpcError {
 
 pub struct BlockchainClient {
     config: BlockchainConfig,
-    db: sled::Db,
+    db: rocksdb::DB,
+    _temp_dir: Option<tempfile::TempDir>,
     http_client: reqwest::Client,
 }
 
 impl BlockchainClient {
-    pub fn new(config: BlockchainConfig) -> Self {
+    pub fn new(config: BlockchainConfig) -> Result<Self, BlockchainError> {
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
             reqwest::header::CONTENT_TYPE,
@@ -91,17 +94,31 @@ impl BlockchainClient {
             .timeout(Duration::from_secs(config.timeout_secs + 2))
             .build()
             .unwrap_or_default();
-        let db = if let Some(path) = &config.db_path {
-            sled::open(path).unwrap_or_else(|_| sled::Config::new().temporary(true).open().unwrap())
+            
+        let mut opts = rocksdb::Options::default();
+        opts.create_if_missing(true);
+        let (db, _temp_dir) = if let Some(path) = &config.db_path {
+            match rocksdb::DB::open(&opts, path) {
+                Ok(db) => (db, None),
+                Err(e) => {
+                    tracing::warn!("Failed to open rocksdb at {}: {}, falling back to temp dir", path, e);
+                    let temp = tempfile::tempdir().map_err(|e| BlockchainError::DatabaseError(e.to_string()))?;
+                    let db = rocksdb::DB::open(&opts, temp.path()).map_err(|e| BlockchainError::DatabaseError(e.to_string()))?;
+                    (db, Some(temp))
+                }
+            }
         } else {
-            sled::Config::new().temporary(true).open().unwrap()
+            let temp = tempfile::tempdir().map_err(|e| BlockchainError::DatabaseError(e.to_string()))?;
+            let db = rocksdb::DB::open(&opts, temp.path()).map_err(|e| BlockchainError::DatabaseError(e.to_string()))?;
+            (db, Some(temp))
         };
 
-        Self {
+        Ok(Self {
             config,
             db,
+            _temp_dir,
             http_client,
-        }
+        })
     }
 
     pub fn create_transaction(
@@ -133,8 +150,9 @@ impl BlockchainClient {
             }
             Ok(Err(BlockchainError::NodeUnreachable(_))) | Err(_) => {
                 warn!(tx_id = %tx.tx_id, "Blockchain node unreachable or timeout, queuing");
-                let tx_bytes = bincode::serialize(&tx).unwrap();
-                let _ = self.db.insert(tx.tx_id.as_bytes(), tx_bytes);
+                let tx_bytes = bincode::serialize(&tx)
+                    .map_err(|e| BlockchainError::TransactionFailed(format!("serialization failed: {e}")))?;
+                let _ = self.db.put(tx.tx_id.as_bytes(), tx_bytes);
                 Ok(TransactionReceipt {
                     tx_id: tx.tx_id,
                     block_hash: String::new(),
@@ -203,25 +221,29 @@ impl BlockchainClient {
     }
 
     pub fn queue_len(&self) -> usize {
-        self.db.len()
+        self.db.iterator(rocksdb::IteratorMode::Start).count()
     }
 
     pub fn drain_queue(&self) -> Vec<BlockchainTransaction> {
         let mut drained = Vec::new();
-        for (k, v) in self.db.iter().flatten() {
-            if let Ok(tx) = bincode::deserialize::<BlockchainTransaction>(&v) {
-                drained.push(tx);
+        for item in self.db.iterator(rocksdb::IteratorMode::Start) {
+            if let Ok((k, v)) = item {
+                if let Ok(tx) = bincode::deserialize::<BlockchainTransaction>(&v) {
+                    drained.push(tx);
+                }
+                let _ = self.db.delete(&k);
             }
-            let _ = self.db.remove(&k);
         }
         drained
     }
 
     pub async fn retry_all_queued(&self) {
         let mut to_retry = Vec::new();
-        for (k, v) in self.db.iter().flatten() {
-            if let Ok(tx) = bincode::deserialize::<BlockchainTransaction>(&v) {
-                to_retry.push((k, tx));
+        for item in self.db.iterator(rocksdb::IteratorMode::Start) {
+            if let Ok((k, v)) = item {
+                if let Ok(tx) = bincode::deserialize::<BlockchainTransaction>(&v) {
+                    to_retry.push((k, tx));
+                }
             }
         }
 
@@ -230,14 +252,14 @@ impl BlockchainClient {
             match timeout(timeout_dur, self.send_to_node(&tx)).await {
                 Ok(Ok(receipt)) => {
                     info!(tx_id = %tx.tx_id, block = %receipt.block_number, "Retried transaction finalized");
-                    let _ = self.db.remove(&k);
+                    let _ = self.db.delete(&k);
                 }
                 Ok(Err(BlockchainError::NodeUnreachable(_))) | Err(_) => {
                     warn!(tx_id = %tx.tx_id, "Retry failed: Blockchain node unreachable or timeout");
                 }
                 Ok(Err(e)) => {
                     error!(tx_id = %tx.tx_id, error = %e, "Retried transaction failed");
-                    let _ = self.db.remove(&k);
+                    let _ = self.db.delete(&k);
                 }
             }
         }
@@ -260,7 +282,7 @@ mod tests {
 
     #[test]
     fn test_create_transaction() {
-        let client = BlockchainClient::new(test_config());
+        let client = BlockchainClient::new(test_config()).unwrap();
         let kp = KeyPair::generate().unwrap();
         let tx = client.create_transaction(
             "abc123hash".into(),
@@ -275,7 +297,7 @@ mod tests {
     #[tokio::test]
     async fn test_submit_transaction_queued_on_no_node() {
         let config = test_config();
-        let client = BlockchainClient::new(config);
+        let client = BlockchainClient::new(config).unwrap();
         let kp = KeyPair::generate().unwrap();
         let tx = client.create_transaction("hash".into(), "SCB".into(), &kp).unwrap();
         let receipt = client.submit(tx).await.unwrap();

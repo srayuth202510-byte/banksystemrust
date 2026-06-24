@@ -145,7 +145,12 @@ async fn main() {
 
     let p2p_node = P2pNode::new("BBL".into(), keypair, tls.clone());
 
-    let blockchain_client = std::sync::Arc::new(BlockchainClient::new(config.blockchain.clone()));
+    let blockchain_client = std::sync::Arc::new(
+        BlockchainClient::new(config.blockchain.clone()).unwrap_or_else(|e| {
+            error!(error = %e, "Failed to initialize blockchain client");
+            std::process::exit(1);
+        })
+    );
     
     // Background Retry Worker for Substrate node
     let worker_client = blockchain_client.clone();
@@ -163,8 +168,18 @@ async fn main() {
         .finish();
 
     let quic_config = config.clone();
+    let quic_tls = tls.clone();
     tokio::spawn(async move {
-        start_quic_server(&quic_config, &tls).await;
+        start_quic_server(&quic_config, &quic_tls).await;
+    });
+
+    let tcp_config = config.clone();
+    let tcp_tls = tls.clone();
+    tokio::spawn(async move {
+        let addr = format!("0.0.0.0:{}", tcp_config.network.tcp_port);
+        if let Err(e) = banksystemrust::network::tcp_channel::start_tcp_server(&addr, &tcp_tls).await {
+            error!(error = %e, "TCP server failed");
+        }
     });
 
     let app = Router::new()

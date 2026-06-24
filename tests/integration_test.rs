@@ -60,7 +60,7 @@ async fn test_full_kyc_flow() {
     assert_eq!(identity_hash.len(), 64, "SHA-256 hex should be 64 chars");
 
     let endpoint = spawn_mock_node().await;
-    let client = BlockchainClient::new(blockchain_config(endpoint));
+    let client = BlockchainClient::new(blockchain_config(endpoint)).unwrap();
     let tx = client
         .create_transaction(identity_hash.clone(), "BBL".into(), &kp)
         .expect("create tx");
@@ -83,7 +83,7 @@ async fn test_crypto_identity_blockchain_integration() {
 
     let identity_hash = crypto::hash_hex(&payload);
     let endpoint = spawn_mock_node().await;
-    let client = BlockchainClient::new(blockchain_config(endpoint));
+    let client = BlockchainClient::new(blockchain_config(endpoint)).unwrap();
     let tx = client
         .create_transaction(identity_hash, kyc.bank_code, &kp)
         .unwrap();
@@ -208,7 +208,7 @@ fn test_keypair_from_bytes_roundtrip() {
 #[tokio::test]
 async fn test_blockchain_queue_drain() {
     let endpoint = spawn_mock_node().await;
-    let client = BlockchainClient::new(blockchain_config(endpoint));
+    let client = BlockchainClient::new(blockchain_config(endpoint)).unwrap();
     let kp = sample_keypair();
     for i in 0..5 {
         let tx = client
@@ -288,7 +288,7 @@ fn test_blockchain_config_defaults() {
 #[tokio::test]
 async fn test_blockchain_create_tx_signed() {
     let kp = sample_keypair();
-    let client = BlockchainClient::new(blockchain_config("http://dummy".into()));
+    let client = BlockchainClient::new(blockchain_config("http://dummy".into())).unwrap();
     let tx = client
         .create_transaction("sig-test-hash".into(), "KBANK".into(), &kp)
         .unwrap();
