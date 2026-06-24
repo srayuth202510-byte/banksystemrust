@@ -1,0 +1,98 @@
+[package]
+name = "banksystemrust"
+version = "0.1.0"
+edition = "2024"
+description = "NDID High-Performance Blockchain Banking System"
+authors = []
+
+[lib]
+name = "banksystemrust"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ndid-gateway"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
+tokio-stream = "0.1"
+futures-util = "0.3"
+
+# HTTP / GraphQL
+axum = "0.8"
+async-graphql = "7"
+async-graphql-axum = "7"
+
+# Network
+quinn = "0.11"
+rustls = { version = "0.23", features = ["ring"] }
+ring = "0.17"
+rustls-pemfile = "2"
+rcgen = "0.13"
+tokio-rustls = "0.26"
+
+# HTTP client
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# Crypto
+ed25519-dalek = "2"
+aes-gcm = "0.10"
+sha2 = "0.10"
+rand = "0.8"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bincode = "1"
+hex = "0.4"
+base64 = "0.22"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Security
+secrecy = { version = "0.10", features = ["serde"] }
+zeroize = { version = "1", features = ["derive"] }
+subtle = "2"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+tracing-appender = "0.2"
+
+# Database / Storage
+sled = "0.34"
+
+# Rate limiting
+tower = { version = "0.5", features = ["limit", "buffer", "util"] }
+
+# Async trait
+async-trait = "0.1"
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+clap = { version = "4", features = ["derive"] }
+toml = "0.8"
+
+# Config
+config = "0.14"
+
+[dev-dependencies]
+rstest = "0.23"
+tempfile = "3"
+tracing-test = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+debug = false
+
+[profile.bench]
+opt-level = 3
+debug = false

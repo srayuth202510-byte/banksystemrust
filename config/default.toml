@@ -1,0 +1,27 @@
+[server]
+host = "0.0.0.0"
+port = 8080
+graphql_endpoint = "/graphql"
+graphql_playground = true
+
+[network]
+quic_port = 4433
+tcp_port = 8443
+quic_timeout_ms = 500
+fallback_enabled = true
+
+[blockchain]
+endpoint = "http://127.0.0.1:9933"
+timeout_secs = 5
+max_retries = 3
+
+[crypto]
+hsm_slot = 0
+hsm_pin = ""
+signing_algorithm = "ED25519"
+encryption_algorithm = "AES-256-GCM"
+
+[logging]
+level = "info"
+format = "json"
+directory = "/var/log/ndid"

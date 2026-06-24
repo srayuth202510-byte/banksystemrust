@@ -1,0 +1,54 @@
+services:
+  ndid-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ndid-gateway
+    ports:
+      - "8080:8080"
+      - "4433:4433/udp"
+      - "8443:8443"
+    volumes:
+      - ./config:/app/config:ro
+      - ndid-logs:/var/log/ndid
+    environment:
+      - RUST_LOG=${RUST_LOG:-info}
+      - NDID_SERVER__HOST=0.0.0.0
+      - NDID_SERVER__PORT=8080
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - ndid-net
+
+  ndid-blockchain:
+    image: parity/substrate:latest
+    container_name: ndid-blockchain
+    ports:
+      - "9933:9933"
+      - "9944:9944"
+      - "30333:30333"
+    command: [
+      "--dev",
+      "--rpc-external",
+      "--rpc-cors", "all",
+      "--ws-external",
+      "--base-path", "/data"
+    ]
+    volumes:
+      - blockchain-data:/data
+    restart: unless-stopped
+    networks:
+      - ndid-net
+
+volumes:
+  ndid-logs:
+  blockchain-data:
+
+networks:
+  ndid-net:
+    driver: bridge
