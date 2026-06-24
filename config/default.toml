@@ -6,6 +6,11 @@ port = 8080
 graphql_endpoint = "/graphql"
 graphql_playground = true
 
+[server.rate_limit]
+requests_per_second = 10000
+burst = 2000
+per_ip_limit = 100
+
 [network]
 quic_port = 4433
 tcp_port = 8443

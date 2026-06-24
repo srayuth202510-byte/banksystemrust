@@ -9,11 +9,30 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RateLimitConfig {
+    pub requests_per_second: u64,
+    pub burst: usize,
+    pub per_ip_limit: u64,
+}
+
+impl Default for RateLimitConfig {
+    fn default() -> Self {
+        Self {
+            requests_per_second: 1000,
+            burst: 2000,
+            per_ip_limit: 100,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
     pub graphql_endpoint: String,
     pub graphql_playground: bool,
+    #[serde(default)]
+    pub rate_limit: RateLimitConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,6 +98,7 @@ impl Default for AppConfig {
                 port: 8080,
                 graphql_endpoint: "/graphql".into(),
                 graphql_playground: true,
+                rate_limit: RateLimitConfig::default(),
             },
             network: NetworkConfig {
                 quic_port: 4433,
@@ -120,6 +140,12 @@ impl AppConfig {
         }
         if self.server.port == 0 {
             return Err("server.port cannot be 0".into());
+        }
+        if self.server.rate_limit.requests_per_second == 0 {
+            return Err("server.rate_limit.requests_per_second cannot be 0".into());
+        }
+        if self.server.rate_limit.burst == 0 {
+            return Err("server.rate_limit.burst cannot be 0".into());
         }
         if self.network.quic_port == 0 {
             return Err("network.quic_port cannot be 0".into());
@@ -185,8 +211,10 @@ mod tests {
 
     #[test]
     fn test_invalid_bank_code() {
-        let mut config = AppConfig::default();
-        config.bank_code = "".into();
+        let config = AppConfig {
+            bank_code: "".into(),
+            ..Default::default()
+        };
         assert!(config.validate().is_err());
     }
 
@@ -208,11 +236,29 @@ mod tests {
     fn test_hsm_validation() {
         let mut config = AppConfig::default();
         config.crypto.hsm_enabled = true;
-        // Should fail because library path is None and pin is empty
         assert!(config.validate().is_err());
 
         config.crypto.hsm_library_path = Some("/path/to/lib".into());
         config.crypto.hsm_pin = "1234".into();
         assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_rate_limit_validation() {
+        let mut config = AppConfig::default();
+        config.server.rate_limit.requests_per_second = 0;
+        assert!(config.validate().is_err());
+
+        let mut config = AppConfig::default();
+        config.server.rate_limit.burst = 0;
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_rate_limit_defaults() {
+        let rl = RateLimitConfig::default();
+        assert_eq!(rl.requests_per_second, 1000);
+        assert_eq!(rl.burst, 2000);
+        assert_eq!(rl.per_ip_limit, 100);
     }
 }

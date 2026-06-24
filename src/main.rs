@@ -288,7 +288,10 @@ async fn main() {
                     )
                 }))
                 .layer(BufferLayer::new(1024))
-                .layer(RateLimitLayer::new(1000, Duration::from_secs(1))),
+                .layer(RateLimitLayer::new(
+                    config.server.rate_limit.requests_per_second,
+                    Duration::from_secs(1),
+                )),
         )
         .with_state(schema);
 
