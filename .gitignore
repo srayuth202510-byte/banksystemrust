@@ -1,0 +1,58 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+
+# Debug logs (rotated, not tracked)
+*.log
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
+
+# graphify outputs
+graphify-out/
+
+# System debug log (runtime-generated)
+system_debug.log
+
+# Benchmark results
+bench-results/
+criterion/
+
+# Coverage
+*.profraw
+*.profdata
+tarpaulin-report.html
+coverage/
+
+# Cargo audit / vet cache
+cargo-vet/
+cargo-audit/
+
+# Temporary
+tmp/
+temp/
+*.tmp
