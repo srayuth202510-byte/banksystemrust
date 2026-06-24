@@ -10,14 +10,12 @@ use crate::network::{ConnectionStream, NetworkChannel, NetworkError, Protocol};
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::broadcast;
 use tokio::time::{Duration, timeout};
-use tokio_rustls::{TlsAcceptor, TlsConnector, rustls::ClientConfig};
+use tokio_rustls::{TlsAcceptor, TlsConnector};
 use tracing::{info, warn};
 
-pub async fn connect_tcp_tls(
-    addr: &str,
-    _tls: &TlsContext,
-) -> Result<NetworkChannel, NetworkError> {
+pub async fn connect_tcp_tls(addr: &str, tls: &TlsContext) -> Result<NetworkChannel, NetworkError> {
     info!(addr = %addr, "Attempting TCP+TLS connection");
 
     let tcp_timeout = Duration::from_secs(2);
@@ -26,13 +24,9 @@ pub async fn connect_tcp_tls(
         .map_err(|_| NetworkError::Timeout)?
         .map_err(|e| NetworkError::TcpFailed(format!("tcp connect failed: {e}")))?;
 
-    let tls_config =
-        ClientConfig::builder_with_provider(rustls::crypto::ring::default_provider().into())
-            .with_protocol_versions(&[&rustls::version::TLS13])
-            .map_err(|e| NetworkError::TlsError(e.to_string()))?
-            .dangerous()
-            .with_custom_certificate_verifier(Arc::new(crate::network::tls::SkipCertVerifier))
-            .with_no_client_auth();
+    let tls_config = tls
+        .to_rustls_client_config(false)
+        .map_err(|e| NetworkError::TlsError(e.to_string()))?;
 
     let connector = TlsConnector::from(Arc::new(tls_config));
     let server_name = rustls::pki_types::ServerName::try_from("localhost")
@@ -53,7 +47,11 @@ pub async fn connect_tcp_tls(
     })
 }
 
-pub async fn start_tcp_server(bind_addr: &str, tls: &TlsContext) -> Result<(), NetworkError> {
+pub async fn start_tcp_server(
+    bind_addr: &str,
+    tls: &TlsContext,
+    mut shutdown_rx: broadcast::Receiver<()>,
+) -> Result<(), NetworkError> {
     let listener = TcpListener::bind(bind_addr)
         .await
         .map_err(|e| NetworkError::TcpFailed(format!("server bind failed: {e}")))?;
@@ -67,25 +65,34 @@ pub async fn start_tcp_server(bind_addr: &str, tls: &TlsContext) -> Result<(), N
     info!(addr = %bind_addr, "TCP+TLS fallback server listening");
 
     loop {
-        match listener.accept().await {
-            Ok((stream, remote_addr)) => {
-                let acceptor = acceptor.clone();
-                tokio::spawn(async move {
-                    match acceptor.accept(stream).await {
-                        Ok(tls_stream) => {
-                            handle_tcp_connection(tls_stream, remote_addr).await;
-                        }
-                        Err(e) => {
-                            warn!(remote = %remote_addr, error = %e, "TCP+TLS accept failed");
-                        }
-                    }
-                });
+        tokio::select! {
+            _ = shutdown_rx.recv() => {
+                info!("TCP server shutting down");
+                break;
             }
-            Err(e) => {
-                warn!(error = %e, "TCP accept error");
+            result = listener.accept() => {
+                match result {
+                    Ok((stream, remote_addr)) => {
+                        let acceptor = acceptor.clone();
+                        tokio::spawn(async move {
+                            match acceptor.accept(stream).await {
+                                Ok(tls_stream) => {
+                                    handle_tcp_connection(tls_stream, remote_addr).await;
+                                }
+                                Err(e) => {
+                                    warn!(remote = %remote_addr, error = %e, "TCP+TLS accept failed");
+                                }
+                            }
+                        });
+                    }
+                    Err(e) => {
+                        warn!(error = %e, "TCP accept error");
+                    }
+                }
             }
         }
     }
+    Ok(())
 }
 
 pub async fn handle_tcp_connection(

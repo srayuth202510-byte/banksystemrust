@@ -275,13 +275,22 @@ impl BlockchainClient {
             match timeout(timeout_dur, self.send_to_node(&tx)).await {
                 Ok(Ok(receipt)) => {
                     info!(tx_id = %tx.tx_id, block = %receipt.block_number, "Retried transaction finalized");
+                    crate::metrics::blockchain_retries()
+                        .with_label_values(&["Success"])
+                        .inc();
                     let _ = self.db.delete(&k);
                 }
                 Ok(Err(BlockchainError::NodeUnreachable(_))) | Err(_) => {
                     warn!(tx_id = %tx.tx_id, "Retry failed: Blockchain node unreachable or timeout");
+                    crate::metrics::blockchain_retries()
+                        .with_label_values(&["Timeout"])
+                        .inc();
                 }
                 Ok(Err(e)) => {
                     error!(tx_id = %tx.tx_id, error = %e, "Retried transaction failed");
+                    crate::metrics::blockchain_retries()
+                        .with_label_values(&["Failed"])
+                        .inc();
                     let _ = self.db.delete(&k);
                 }
             }

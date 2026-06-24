@@ -19,6 +19,8 @@ timeout_secs = 5
 max_retries = 3
 
 [crypto]
+hsm_enabled = false
+hsm_library_path = ""
 hsm_slot = 0
 hsm_pin = ""
 signing_algorithm = "ED25519"

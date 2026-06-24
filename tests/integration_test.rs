@@ -11,6 +11,7 @@ use banksystemrust::network::tcp_channel::start_tcp_server;
 use banksystemrust::network::tls::TlsContext;
 use banksystemrust::network::{ConnectionChannel, Protocol, connect_with_fallback};
 use banksystemrust::p2p_quic::{P2pMessage, P2pNode};
+use tokio::sync::broadcast;
 
 fn init_logging() {
     let _ = tracing_subscriber::fmt()
@@ -70,8 +71,10 @@ async fn test_tcp_fallback_communication() {
     server_tls.ca_certs.clear();
 
     let bind_addr = tcp_addr.clone();
+    let (shutdown_tx, _shutdown_rx) = broadcast::channel(1);
+    let shutdown_rx = shutdown_tx.subscribe();
     tokio::spawn(async move {
-        let _ = start_tcp_server(&bind_addr, &server_tls).await;
+        let _ = start_tcp_server(&bind_addr, &server_tls, shutdown_rx).await;
     });
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
@@ -81,8 +84,8 @@ async fn test_tcp_fallback_communication() {
         .send_kyc(&tcp_addr, "kyc_hash_test_456".into())
         .await
         .unwrap();
-
     assert_eq!(protocol, Protocol::Tcp);
+    let _ = shutdown_tx.send(());
 }
 
 #[tokio::test]
@@ -100,13 +103,16 @@ async fn test_invalid_signature_rejection() {
     server_tls.ca_certs.clear();
 
     let bind_addr = tcp_addr.clone();
+    let (shutdown_tx, _shutdown_rx) = broadcast::channel(1);
+    let shutdown_rx = shutdown_tx.subscribe();
     tokio::spawn(async move {
-        let _ = start_tcp_server(&bind_addr, &server_tls).await;
+        let _ = start_tcp_server(&bind_addr, &server_tls, shutdown_rx).await;
     });
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
     let (channel, _protocol) = connect_with_fallback(&tcp_addr, &tls).await;
+    let _ = shutdown_tx.send(());
     assert!(channel.stream.is_some());
 
     let payload = b"KYC:SCB:fake_hash";

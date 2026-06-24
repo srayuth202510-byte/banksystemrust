@@ -151,6 +151,35 @@ impl TlsContext {
         Ok(config)
     }
 
+    pub fn to_rustls_client_config(
+        &self,
+        skip_verify: bool,
+    ) -> Result<rustls::ClientConfig, TlsError> {
+        let provider = rustls::crypto::ring::default_provider();
+
+        let crypto: rustls::ClientConfig = if skip_verify {
+            rustls::ClientConfig::builder_with_provider(provider.into())
+                .with_protocol_versions(&[&rustls::version::TLS13])
+                .map_err(|e| TlsError::CertLoading(e.to_string()))?
+                .dangerous()
+                .with_custom_certificate_verifier(Arc::new(SkipCertVerifier))
+                .with_no_client_auth()
+        } else {
+            let mut roots = rustls::RootCertStore::empty();
+            for ca in &self.ca_certs {
+                roots
+                    .add(ca.clone())
+                    .map_err(|e| TlsError::CertLoading(e.to_string()))?;
+            }
+            rustls::ClientConfig::builder_with_provider(provider.into())
+                .with_protocol_versions(&[&rustls::version::TLS13])
+                .map_err(|e| TlsError::CertLoading(e.to_string()))?
+                .with_root_certificates(roots)
+                .with_no_client_auth()
+        };
+        Ok(crypto)
+    }
+
     pub fn to_rustls_server_config(&self) -> Result<rustls::ServerConfig, TlsError> {
         let verifier = if self.ca_certs.is_empty() {
             rustls::server::WebPkiClientVerifier::no_client_auth()
@@ -253,5 +282,7 @@ mod tests {
         let ctx = TlsContext::generate_self_signed().unwrap();
         assert!(ctx.to_quic_server_config().is_ok());
         assert!(ctx.to_quic_client_config(true).is_ok());
+        assert!(ctx.to_rustls_client_config(true).is_ok());
+        assert!(ctx.to_rustls_client_config(false).is_ok());
     }
 }

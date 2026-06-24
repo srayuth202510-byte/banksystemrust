@@ -14,6 +14,9 @@ use sha2::{Digest, Sha256};
 use thiserror::Error;
 use zeroize::Zeroize;
 
+#[cfg(feature = "hsm")]
+use pkcs11::types::*;
+
 #[derive(Debug, Error)]
 pub enum CryptoError {
     #[error("signing failed: {0}")]
@@ -157,6 +160,116 @@ pub fn decrypt(encrypted: &EncryptedPayload, key: &[u8; 32]) -> Result<Vec<u8>, 
     cipher
         .decrypt(nonce, encrypted.ciphertext.as_ref())
         .map_err(|e| CryptoError::DecryptionFailed(e.to_string()))
+}
+
+#[cfg(feature = "hsm")]
+pub mod hsm {
+    use super::*;
+    use pkcs11::Ctx;
+
+    // Define standard constants for EdDSA / Ed25519 in PKCS#11
+    pub const CKK_EDDSA: CK_KEY_TYPE = 0x00000040;
+    pub const CKM_EDDSA: CK_MECHANISM_TYPE = 0x00001057;
+
+    pub struct HsmClient {
+        ctx: Ctx,
+        _slot: CK_SLOT_ID,
+        session: CK_SESSION_HANDLE,
+    }
+
+    impl HsmClient {
+        pub fn new(
+            library_path: &str,
+            pin: &str,
+            slot_id: Option<CK_SLOT_ID>,
+        ) -> Result<Self, CryptoError> {
+            let mut ctx =
+                Ctx::new(library_path).map_err(|e| CryptoError::HsmError(e.to_string()))?;
+            ctx.initialize(None)
+                .map_err(|e| CryptoError::HsmError(e.to_string()))?;
+
+            let slots = ctx
+                .get_slot_list(true)
+                .map_err(|e| CryptoError::HsmError(e.to_string()))?;
+            let slot = match slot_id {
+                Some(id) => id,
+                None => *slots
+                    .first()
+                    .ok_or_else(|| CryptoError::HsmError("no slots available".into()))?,
+            };
+
+            let session = ctx
+                .open_session(slot, CKF_SERIAL_SESSION | CKF_RW_SESSION, None, None)
+                .map_err(|e| CryptoError::HsmError(e.to_string()))?;
+            ctx.login(session, CKU_USER, Some(pin))
+                .map_err(|e| CryptoError::HsmError(e.to_string()))?;
+
+            Ok(Self {
+                ctx,
+                _slot: slot,
+                session,
+            })
+        }
+
+        pub fn sign_ed25519(&self, data: &[u8], key_label: &str) -> Result<Vec<u8>, CryptoError> {
+            let key = self.find_key(key_label, CKO_PRIVATE_KEY, CKK_EDDSA)?;
+            let mech = CK_MECHANISM {
+                mechanism: CKM_EDDSA,
+                pParameter: std::ptr::null_mut(),
+                ulParameterLen: 0,
+            };
+
+            self.ctx
+                .sign_init(self.session, &mech, key)
+                .map_err(|e| CryptoError::HsmError(e.to_string()))?;
+
+            let signature = self
+                .ctx
+                .sign(self.session, data)
+                .map_err(|e| CryptoError::HsmError(e.to_string()))?;
+
+            Ok(signature)
+        }
+
+        fn find_key(
+            &self,
+            label: &str,
+            class: CK_OBJECT_CLASS,
+            key_type: CK_KEY_TYPE,
+        ) -> Result<CK_OBJECT_HANDLE, CryptoError> {
+            let template = [
+                CK_ATTRIBUTE::new(CKA_CLASS).with_ck_ulong(&class),
+                CK_ATTRIBUTE::new(CKA_KEY_TYPE).with_ck_ulong(&key_type),
+                CK_ATTRIBUTE::new(CKA_LABEL).with_string(label),
+            ];
+
+            self.ctx
+                .find_objects_init(self.session, &template)
+                .map_err(|e| CryptoError::HsmError(e.to_string()))?;
+
+            let objects = self
+                .ctx
+                .find_objects(self.session, 1)
+                .map_err(|e| CryptoError::HsmError(e.to_string()))?;
+
+            self.ctx
+                .find_objects_final(self.session)
+                .map_err(|e| CryptoError::HsmError(e.to_string()))?;
+
+            objects
+                .first()
+                .copied()
+                .ok_or_else(|| CryptoError::HsmError(format!("key not found: {}", label)))
+        }
+    }
+
+    impl Drop for HsmClient {
+        fn drop(&mut self) {
+            let _ = self.ctx.logout(self.session);
+            let _ = self.ctx.close_session(self.session);
+            let _ = self.ctx.finalize();
+        }
+    }
 }
 
 #[cfg(test)]

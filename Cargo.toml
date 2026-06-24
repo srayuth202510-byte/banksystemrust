@@ -58,10 +58,18 @@ secrecy = { version = "0.10", features = ["serde"] }
 zeroize = { version = "1", features = ["derive"] }
 subtle = "2"
 
-# Logging
-tracing = "0.1"
+# HSM / PKCS#11
+pkcs11 = { version = "0.5", optional = true }
+
+# Logging & Observability
+tracing = "0.1.44"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 tracing-appender = "0.2"
+prometheus = { version = "0.13", features = ["process"] }
+opentelemetry = { version = "0.24", features = ["trace"] }
+opentelemetry_sdk = { version = "0.24", features = ["rt-tokio"] }
+opentelemetry-stdout = { version = "0.5.0", features = ["trace"] }
+tracing-opentelemetry = "0.25"
 
 # Database / Storage
 rocksdb = "0.24.0"
@@ -96,3 +104,7 @@ debug = false
 [profile.bench]
 opt-level = 3
 debug = false
+
+[features]
+default = []
+hsm = ["dep:pkcs11"]

@@ -52,18 +52,19 @@ pub struct KycData {
 }
 
 impl KycData {
-    pub fn compute_hash(&self) -> String {
-        let serialized = serde_json::to_vec(self).unwrap_or_default();
+    pub fn compute_hash(&self) -> Result<String, IdentityError> {
+        let serialized = serde_json::to_vec(self)
+            .map_err(|e| IdentityError::ValidationFailed(format!("serialization failed: {e}")))?;
         let hash = crypto::hash(&serialized);
-        hex::encode(hash)
+        Ok(hex::encode(hash))
     }
 
-    pub fn anonymize(&self) -> AnonymizedKyc {
-        AnonymizedKyc {
-            identity_hash: self.compute_hash(),
+    pub fn anonymize(&self) -> Result<AnonymizedKyc, IdentityError> {
+        Ok(AnonymizedKyc {
+            identity_hash: self.compute_hash()?,
             bank_code: self.bank_code.clone(),
             timestamp: self.timestamp,
-        }
+        })
     }
 }
 
@@ -75,7 +76,7 @@ pub struct AnonymizedKyc {
 }
 
 pub fn validate_identity_hash(kyc: &KycData, expected_hash: &str) -> Result<bool, IdentityError> {
-    let actual_hash = kyc.compute_hash();
+    let actual_hash = kyc.compute_hash()?;
     use subtle::ConstantTimeEq;
     Ok(actual_hash
         .as_bytes()
@@ -88,16 +89,16 @@ pub fn create_identity_record(
     kyc: &KycData,
     bank_code: String,
     protocol: String,
-) -> IdentityRecord {
-    let identity_hash = kyc.compute_hash();
-    IdentityRecord {
+) -> Result<IdentityRecord, IdentityError> {
+    let identity_hash = kyc.compute_hash()?;
+    Ok(IdentityRecord {
         request_id,
         status: IdentityStatus::Pending,
         identity_hash,
         timestamp: chrono::Utc::now().timestamp(),
         bank_code,
         active_protocol: protocol,
-    }
+    })
 }
 
 #[cfg(test)]
@@ -117,15 +118,15 @@ mod tests {
     #[test]
     fn test_kyc_hash_consistency() {
         let kyc = sample_kyc();
-        let hash1 = kyc.compute_hash();
-        let hash2 = kyc.compute_hash();
+        let hash1 = kyc.compute_hash().unwrap();
+        let hash2 = kyc.compute_hash().unwrap();
         assert_eq!(hash1, hash2);
     }
 
     #[test]
     fn test_anonymize_removes_pii() {
         let kyc = sample_kyc();
-        let anon = kyc.anonymize();
+        let anon = kyc.anonymize().unwrap();
         assert!(!anon.identity_hash.contains("1234567890123"));
         assert!(!anon.identity_hash.contains("สมชาย"));
     }
@@ -133,7 +134,8 @@ mod tests {
     #[test]
     fn test_create_identity_record() {
         let kyc = sample_kyc();
-        let record = create_identity_record("req-001".into(), &kyc, "BBL".into(), "QUIC".into());
+        let record =
+            create_identity_record("req-001".into(), &kyc, "BBL".into(), "QUIC".into()).unwrap();
         assert!(matches!(record.status, IdentityStatus::Pending));
         assert_eq!(record.identity_hash.len(), 64);
     }

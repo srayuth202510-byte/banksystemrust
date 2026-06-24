@@ -68,6 +68,32 @@ impl P2pNode {
     }
 
     pub async fn send_kyc(&self, peer_addr: &str, kyc_hash: String) -> Result<Protocol, P2pError> {
+        let res = self.send_kyc_inner(peer_addr, kyc_hash).await;
+        match &res {
+            Ok(_) => {
+                crate::metrics::p2p_messages()
+                    .with_label_values(&["out", &self.bank_code, "ACK"])
+                    .inc();
+            }
+            Err(e) => {
+                let err_label = match e {
+                    P2pError::Network(_) => "NetworkError",
+                    P2pError::HandshakeFailed(_) => "HandshakeFailed",
+                    _ => "Error",
+                };
+                crate::metrics::p2p_messages()
+                    .with_label_values(&["out", &self.bank_code, err_label])
+                    .inc();
+            }
+        }
+        res
+    }
+
+    async fn send_kyc_inner(
+        &self,
+        peer_addr: &str,
+        kyc_hash: String,
+    ) -> Result<Protocol, P2pError> {
         info!(from = %self.bank_code, to = %peer_addr, "Sending KYC data");
         let payload = format!("KYC:{}:{}", self.bank_code, kyc_hash);
         let signed = crypto::sign(payload.as_bytes(), &self.keypair)?;
@@ -142,8 +168,12 @@ mod tests {
         let mut server_tls = node.tls.clone();
         server_tls.ca_certs.clear();
         let bind_addr = addr.to_string();
+        let (shutdown_tx, _shutdown_rx) = tokio::sync::broadcast::channel(1);
+        let shutdown_rx = shutdown_tx.subscribe();
         tokio::spawn(async move {
-            let _ = crate::network::tcp_channel::start_tcp_server(&bind_addr, &server_tls).await;
+            let _ =
+                crate::network::tcp_channel::start_tcp_server(&bind_addr, &server_tls, shutdown_rx)
+                    .await;
         });
 
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
@@ -153,5 +183,6 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(proto, Protocol::Tcp);
+        let _ = shutdown_tx.send(());
     }
 }

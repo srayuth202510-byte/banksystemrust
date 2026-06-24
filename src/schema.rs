@@ -103,7 +103,20 @@ impl MutationRoot {
             bank_code: bank_code.clone(),
             timestamp: chrono::Utc::now().timestamp(),
         };
-        let identity_hash = kyc.compute_hash();
+        let identity_hash = match kyc.compute_hash() {
+            Ok(h) => h,
+            Err(e) => {
+                crate::metrics::kyc_requests()
+                    .with_label_values(&[&bank_code, "Failed"])
+                    .inc();
+                return KycResponse {
+                    request_id: String::new(),
+                    identity_hash: String::new(),
+                    bank_code,
+                    message: format!("Failed to compute identity hash: {}", e),
+                };
+            }
+        };
         info!(hash = %identity_hash, "KYC submitted");
 
         let tx = match blockchain_client.create_transaction(
@@ -113,6 +126,9 @@ impl MutationRoot {
         ) {
             Ok(tx) => tx,
             Err(e) => {
+                crate::metrics::kyc_requests()
+                    .with_label_values(&[&bank_code, "Failed"])
+                    .inc();
                 return KycResponse {
                     request_id: String::new(),
                     identity_hash,
@@ -127,6 +143,9 @@ impl MutationRoot {
         let receipt = match blockchain_client.submit(tx).await {
             Ok(r) => r,
             Err(e) => {
+                crate::metrics::kyc_requests()
+                    .with_label_values(&[&bank_code, "Failed"])
+                    .inc();
                 return KycResponse {
                     request_id: tx_id,
                     identity_hash,
@@ -155,6 +174,9 @@ impl MutationRoot {
             crate::blockchain::TxStatus::Queued => "Queued",
             _ => "Unknown",
         };
+        crate::metrics::kyc_requests()
+            .with_label_values(&[&bank_code, status_str])
+            .inc();
 
         KycResponse {
             request_id: tx_id,

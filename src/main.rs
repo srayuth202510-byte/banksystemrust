@@ -19,10 +19,14 @@ use axum::{
     routing::get,
 };
 use clap::Parser;
+use opentelemetry_sdk::trace::TracerProvider;
+use opentelemetry_stdout::SpanExporter;
 use tokio::net::TcpListener;
+use tokio::sync::broadcast;
 use tower::{BoxError, ServiceBuilder, buffer::BufferLayer, limit::RateLimitLayer};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::layer::SubscriberExt;
 
 use banksystemrust::blockchain::BlockchainClient;
 use banksystemrust::config::AppConfig;
@@ -54,7 +58,23 @@ async fn health() -> impl IntoResponse {
     "OK"
 }
 
-async fn shutdown_signal() {
+async fn metrics_handler() -> impl IntoResponse {
+    match banksystemrust::metrics::gather_metrics() {
+        Ok(metrics) => (StatusCode::OK, metrics),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to gather metrics: {e}"),
+        ),
+    }
+}
+
+fn create_shutdown_signal() -> (
+    broadcast::Sender<()>,
+    impl std::future::Future<Output = ()> + Send + 'static,
+) {
+    let (tx, _rx) = broadcast::channel(1);
+    let tx_for_future = tx.clone();
+
     let ctrl_c = async {
         tokio::signal::ctrl_c()
             .await
@@ -72,31 +92,53 @@ async fn shutdown_signal() {
     #[cfg(not(unix))]
     let terminate = std::future::pending::<()>();
 
-    tokio::select! {
-        _ = ctrl_c => { info!("Received Ctrl+C, shutting down..."); }
-        _ = terminate => { info!("Received SIGTERM, shutting down..."); }
-    }
+    let shutdown_future = async move {
+        tokio::select! {
+            _ = ctrl_c => { info!("Received Ctrl+C, shutting down..."); }
+            _ = terminate => { info!("Received SIGTERM, shutting down..."); }
+        }
+        let _ = tx_for_future.send(());
+    };
+
+    (tx, shutdown_future)
 }
 
-async fn start_quic_server(config: &AppConfig, tls: &TlsContext) {
+async fn start_quic_server(
+    config: &AppConfig,
+    tls: &TlsContext,
+    mut shutdown_rx: broadcast::Receiver<()>,
+) {
     let quic_addr = format!("0.0.0.0:{}", config.network.quic_port);
     match tls.to_quic_server_config() {
         Ok(server_config) => {
             match quic_channel::start_quic_server(&quic_addr, server_config).await {
                 Ok(endpoint) => {
                     info!(addr = %quic_addr, "QUIC server started");
-                    while let Some(connecting) = endpoint.accept().await {
-                        tokio::spawn(async move {
-                            match connecting.await {
-                                Ok(connection) => {
-                                    quic_channel::handle_quic_connection(connection).await;
-                                }
-                                Err(e) => {
-                                    error!(error = %e, "QUIC accept handshake failed");
+                    loop {
+                        tokio::select! {
+                            _ = shutdown_rx.recv() => {
+                                info!("QUIC server shutting down");
+                                break;
+                            }
+                            connecting = endpoint.accept() => {
+                                if let Some(connecting) = connecting {
+                                    tokio::spawn(async move {
+                                        match connecting.await {
+                                            Ok(connection) => {
+                                                quic_channel::handle_quic_connection(connection).await;
+                                            }
+                                            Err(e) => {
+                                                error!(error = %e, "QUIC accept handshake failed");
+                                            }
+                                        }
+                                    });
+                                } else {
+                                    break;
                                 }
                             }
-                        });
+                        }
                     }
+                    endpoint.close(0u32.into(), b"shutdown");
                 }
                 Err(e) => {
                     error!(error = %e, "Failed to start QUIC server");
@@ -118,13 +160,27 @@ async fn main() {
         std::process::exit(1);
     });
 
-    tracing_subscriber::fmt()
-        .with_env_filter(
+    // Initialize OpenTelemetry provider with stdout exporter
+    let tracer_provider = TracerProvider::builder()
+        .with_simple_exporter(SpanExporter::default())
+        .build();
+    opentelemetry::global::set_tracer_provider(tracer_provider.clone());
+
+    use opentelemetry::trace::TracerProvider as _;
+    let tracer = tracer_provider.tracer("ndid-gateway");
+    let telemetry_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+
+    let subscriber = tracing_subscriber::Registry::default()
+        .with(
             EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| EnvFilter::new(&config.logging.level)),
         )
-        .json()
-        .init();
+        .with(tracing_subscriber::fmt::layer().json())
+        .with(telemetry_layer);
+
+    if let Err(e) = tracing::subscriber::set_global_default(subscriber) {
+        eprintln!("Failed to set tracing subscriber: {e}");
+    }
 
     info!("NDID Banking System starting...");
     info!(
@@ -132,11 +188,29 @@ async fn main() {
         "Blockchain configured"
     );
 
-    let tls = TlsContext::generate_self_signed().unwrap_or_else(|e| {
-        error!(error = %e, "Failed to generate TLS certificates");
-        std::process::exit(1);
-    });
-    info!("TLS certificates generated");
+    let tls = if let (Some(cert_path), Some(key_path)) =
+        (&config.network.cert_path, &config.network.key_path)
+    {
+        let mut ctx = TlsContext::load(cert_path, key_path).unwrap_or_else(|e| {
+            error!(error = %e, "Failed to load TLS cert/key");
+            std::process::exit(1);
+        });
+        if let Some(ca_path) = &config.network.ca_cert_path {
+            ctx.add_ca_cert(ca_path).unwrap_or_else(|e| {
+                error!(error = %e, "Failed to load CA certificate");
+                std::process::exit(1);
+            });
+        }
+        info!("TLS certificates loaded from files");
+        ctx
+    } else {
+        let ctx = TlsContext::generate_self_signed().unwrap_or_else(|e| {
+            error!(error = %e, "Failed to generate TLS certificates");
+            std::process::exit(1);
+        });
+        info!("Self-signed TLS certificates generated");
+        ctx
+    };
 
     let keypair = match KeyPair::generate() {
         Ok(kp) => {
@@ -176,10 +250,14 @@ async fn main() {
         .data(blockchain_client)
         .finish();
 
+    let (shutdown_tx, shutdown_future) = create_shutdown_signal();
+    let quic_shutdown_rx = shutdown_tx.subscribe();
+    let tcp_shutdown_rx = shutdown_tx.subscribe();
+
     let quic_config = config.clone();
     let quic_tls = tls.clone();
     tokio::spawn(async move {
-        start_quic_server(&quic_config, &quic_tls).await;
+        start_quic_server(&quic_config, &quic_tls, quic_shutdown_rx).await;
     });
 
     let tcp_config = config.clone();
@@ -187,7 +265,8 @@ async fn main() {
     tokio::spawn(async move {
         let addr = format!("0.0.0.0:{}", tcp_config.network.tcp_port);
         if let Err(e) =
-            banksystemrust::network::tcp_channel::start_tcp_server(&addr, &tcp_tls).await
+            banksystemrust::network::tcp_channel::start_tcp_server(&addr, &tcp_tls, tcp_shutdown_rx)
+                .await
         {
             error!(error = %e, "TCP server failed");
         }
@@ -199,6 +278,7 @@ async fn main() {
             get(graphiql).post(graphql_handler),
         )
         .route("/health", get(health))
+        .route("/metrics", get(metrics_handler))
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(|err: BoxError| async move {
@@ -221,12 +301,16 @@ async fn main() {
     });
 
     axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(shutdown_future)
         .await
         .unwrap_or_else(|e| {
             error!(error = %e, "Server error");
             std::process::exit(1);
         });
+
+    if let Err(e) = tracer_provider.shutdown() {
+        error!(error = %e, "Failed to shutdown tracer provider");
+    }
 
     info!("Server shut down gracefully");
 }

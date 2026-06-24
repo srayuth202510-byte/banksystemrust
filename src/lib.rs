@@ -9,6 +9,7 @@ pub mod blockchain;
 pub mod config;
 pub mod crypto;
 pub mod identity;
+pub mod metrics;
 pub mod network;
 pub mod p2p_quic;
 pub mod schema;
