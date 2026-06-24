@@ -13,6 +13,8 @@ use thiserror::Error;
 use tokio::time::{Duration, timeout};
 use tracing::{info, warn};
 
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
 use self::tls::TlsContext;
 
 #[derive(Debug, Error)]
@@ -47,14 +49,17 @@ impl std::fmt::Display for Protocol {
 }
 
 pub enum ConnectionStream {
-    Quic(quinn::Connection),
-    TcpTls(Box<tokio_rustls::client::TlsStream<tokio::net::TcpStream>>),
+    Quic {
+        connection: quinn::Connection,
+        active_recv: tokio::sync::Mutex<Option<quinn::RecvStream>>,
+    },
+    TcpTls(Box<tokio::sync::Mutex<tokio_rustls::client::TlsStream<tokio::net::TcpStream>>>),
 }
 
 impl std::fmt::Debug for ConnectionStream {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Quic(_) => write!(f, "Quic(..)"),
+            Self::Quic { .. } => write!(f, "Quic(..)"),
             Self::TcpTls(_) => write!(f, "TcpTls(..)"),
         }
     }
@@ -72,6 +77,132 @@ pub trait ConnectionChannel: Send + Sync {
     async fn connect(&self, addr: &str, tls: &TlsContext) -> Result<NetworkChannel, NetworkError>;
     async fn send(&self, data: &[u8]) -> Result<(), NetworkError>;
     async fn receive(&self) -> Result<Vec<u8>, NetworkError>;
+}
+
+#[async_trait::async_trait]
+impl ConnectionChannel for NetworkChannel {
+    async fn connect(&self, addr: &str, tls: &TlsContext) -> Result<NetworkChannel, NetworkError> {
+        let (channel, _) = connect_with_fallback(addr, tls).await;
+        if channel.stream.is_some() {
+            Ok(channel)
+        } else {
+            Err(NetworkError::BothFailed)
+        }
+    }
+
+    async fn send(&self, data: &[u8]) -> Result<(), NetworkError> {
+        let stream = self
+            .stream
+            .as_ref()
+            .ok_or_else(|| NetworkError::ConnectionLost("Not connected".into()))?;
+
+        match stream {
+            ConnectionStream::Quic {
+                connection,
+                active_recv,
+            } => {
+                let (mut send_stream, recv_stream) = connection
+                    .open_bi()
+                    .await
+                    .map_err(|e| NetworkError::ConnectionLost(e.to_string()))?;
+
+                send_stream
+                    .write_all(data)
+                    .await
+                    .map_err(|e| NetworkError::ConnectionLost(e.to_string()))?;
+
+                send_stream
+                    .finish()
+                    .map_err(|e| NetworkError::ConnectionLost(e.to_string()))?;
+
+                let mut guard = active_recv.lock().await;
+                *guard = Some(recv_stream);
+
+                Ok(())
+            }
+            ConnectionStream::TcpTls(tls_mutex) => {
+                let mut tls_stream = tls_mutex.lock().await;
+
+                tls_stream
+                    .write_all(data)
+                    .await
+                    .map_err(|e| NetworkError::TcpFailed(e.to_string()))?;
+
+                tls_stream
+                    .flush()
+                    .await
+                    .map_err(|e| NetworkError::TcpFailed(e.to_string()))?;
+
+                tls_stream
+                    .shutdown()
+                    .await
+                    .map_err(|e| NetworkError::TcpFailed(e.to_string()))?;
+
+                Ok(())
+            }
+        }
+    }
+
+    async fn receive(&self) -> Result<Vec<u8>, NetworkError> {
+        let stream = self
+            .stream
+            .as_ref()
+            .ok_or_else(|| NetworkError::ConnectionLost("Not connected".into()))?;
+
+        match stream {
+            ConnectionStream::Quic { active_recv, .. } => {
+                let mut guard = active_recv.lock().await;
+                let mut recv_stream = guard.take().ok_or_else(|| {
+                    NetworkError::ConnectionLost(
+                        "No active receive stream. Call send() first.".into(),
+                    )
+                })?;
+
+                let buf = recv_stream
+                    .read_to_end(65536)
+                    .await
+                    .map_err(|e| NetworkError::ConnectionLost(e.to_string()))?;
+
+                Ok(buf)
+            }
+            ConnectionStream::TcpTls(tls_mutex) => {
+                let mut tls_stream = tls_mutex.lock().await;
+                let mut buf = Vec::new();
+                tls_stream
+                    .read_to_end(&mut buf)
+                    .await
+                    .map_err(|e| NetworkError::TcpFailed(e.to_string()))?;
+
+                Ok(buf)
+            }
+        }
+    }
+}
+
+pub fn process_p2p_message(buf: &[u8]) -> String {
+    use crate::crypto;
+    use crate::p2p_quic::P2pMessage;
+
+    if let Ok(msg) = serde_json::from_slice::<P2pMessage>(buf) {
+        let signed = crypto::SignedPayload {
+            payload: msg.payload.clone(),
+            signature: msg.signature.clone(),
+            public_key: msg.public_key.clone(),
+        };
+        match crypto::verify(&signed) {
+            Ok(true) => {
+                let payload_str = String::from_utf8_lossy(&msg.payload);
+                info!(from = %msg.from_bank, payload = %payload_str, "P2P signature verified");
+                format!("ACK:{}", payload_str)
+            }
+            _ => {
+                warn!("P2P signature verification failed");
+                "ERROR: Invalid Signature".to_string()
+            }
+        }
+    } else {
+        String::from_utf8_lossy(buf).into_owned()
+    }
 }
 
 pub async fn connect_with_fallback(addr: &str, tls: &TlsContext) -> (NetworkChannel, Protocol) {

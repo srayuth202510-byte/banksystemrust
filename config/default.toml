@@ -1,3 +1,5 @@
+bank_code = "BBL"
+
 [server]
 host = "0.0.0.0"
 port = 8080
@@ -9,6 +11,7 @@ quic_port = 4433
 tcp_port = 8443
 quic_timeout_ms = 500
 fallback_enabled = true
+peers = []
 
 [blockchain]
 endpoint = "http://127.0.0.1:9933"

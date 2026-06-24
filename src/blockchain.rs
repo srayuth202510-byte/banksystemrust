@@ -287,6 +287,14 @@ impl BlockchainClient {
             }
         }
     }
+
+    pub fn get_transaction_status(&self, tx_id: &str) -> Result<TxStatus, BlockchainError> {
+        match self.db.get(tx_id.as_bytes()) {
+            Ok(Some(_)) => Ok(TxStatus::Queued),
+            Ok(None) => Ok(TxStatus::Finalized),
+            Err(e) => Err(BlockchainError::DatabaseError(e.to_string())),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -326,5 +334,27 @@ mod tests {
         let receipt = client.submit(tx).await.unwrap();
         assert!(matches!(receipt.status, TxStatus::Queued));
         assert_eq!(client.queue_len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_get_transaction_status() {
+        let config = test_config();
+        let client = BlockchainClient::new(config).unwrap();
+        let kp = KeyPair::generate().unwrap();
+        let tx = client
+            .create_transaction("hash".into(), "KBANK".into(), &kp)
+            .unwrap();
+        let tx_id = tx.tx_id.clone();
+
+        assert!(matches!(
+            client.get_transaction_status(&tx_id).unwrap(),
+            TxStatus::Finalized
+        ));
+
+        let _receipt = client.submit(tx).await.unwrap();
+        assert!(matches!(
+            client.get_transaction_status(&tx_id).unwrap(),
+            TxStatus::Queued
+        ));
     }
 }

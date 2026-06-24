@@ -149,7 +149,10 @@ async fn main() {
         }
     };
 
-    let p2p_node = P2pNode::new("BBL".into(), keypair, tls.clone());
+    let mut p2p_node = P2pNode::new(config.bank_code.clone(), keypair, tls.clone());
+    for peer in &config.network.peers {
+        p2p_node.add_peer(peer.clone());
+    }
 
     let blockchain_client = std::sync::Arc::new(
         BlockchainClient::new(config.blockchain.clone()).unwrap_or_else(|e| {

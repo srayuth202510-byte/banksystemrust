@@ -22,6 +22,7 @@ pub struct NetworkConfig {
     pub tcp_port: u16,
     pub quic_timeout_ms: u64,
     pub fallback_enabled: bool,
+    pub peers: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,6 +50,7 @@ pub struct LoggingConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
+    pub bank_code: String,
     pub server: ServerConfig,
     pub network: NetworkConfig,
     pub blockchain: BlockchainConfig,
@@ -59,6 +61,7 @@ pub struct AppConfig {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
+            bank_code: "BBL".into(),
             server: ServerConfig {
                 host: "0.0.0.0".into(),
                 port: 8080,
@@ -70,6 +73,7 @@ impl Default for AppConfig {
                 tcp_port: 8443,
                 quic_timeout_ms: 500,
                 fallback_enabled: true,
+                peers: Vec::new(),
             },
             blockchain: BlockchainConfig {
                 endpoint: "http://127.0.0.1:9933".into(),

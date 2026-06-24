@@ -47,7 +47,9 @@ pub async fn connect_tcp_tls(
     Ok(NetworkChannel {
         protocol: Protocol::Tcp,
         addr: addr.to_string(),
-        stream: Some(ConnectionStream::TcpTls(Box::new(tls_stream))),
+        stream: Some(ConnectionStream::TcpTls(Box::new(tokio::sync::Mutex::new(
+            tls_stream,
+        )))),
     })
 }
 
@@ -92,21 +94,21 @@ pub async fn handle_tcp_connection(
 ) {
     info!(remote = %remote, "TCP+TLS connection accepted");
 
-    let mut buf = vec![0u8; 65536];
-    loop {
-        match tls_stream.read(&mut buf).await {
-            Ok(0) => break, // EOF
-            Ok(n) => {
-                info!(remote = %remote, len = %n, "TCP data received");
-                if let Err(e) = tls_stream.write_all(&buf[..n]).await {
-                    warn!(error = %e, "TCP send failed");
-                    break;
-                }
+    let mut buf = Vec::new();
+    match tls_stream.read_to_end(&mut buf).await {
+        Ok(_) => {
+            info!(remote = %remote, len = %buf.len(), "TCP data received");
+            let response = crate::network::process_p2p_message(&buf);
+            if let Err(e) = tls_stream.write_all(response.as_bytes()).await {
+                warn!(error = %e, "TCP send response failed");
             }
-            Err(e) => {
-                warn!(remote = %remote, error = %e, "TCP read error");
-                break;
+            if let Err(e) = tls_stream.flush().await {
+                warn!(error = %e, "TCP flush failed");
             }
+            let _ = tls_stream.shutdown().await;
+        }
+        Err(e) => {
+            warn!(remote = %remote, error = %e, "TCP read error");
         }
     }
 

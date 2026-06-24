@@ -9,7 +9,6 @@ use async_graphql::{Context, Object, SimpleObject};
 use tracing::info;
 
 use crate::identity;
-use crate::network;
 use crate::p2p_quic::P2pNode;
 
 #[derive(SimpleObject, Clone)]
@@ -32,26 +31,53 @@ pub struct QueryRoot;
 #[Object]
 impl QueryRoot {
     async fn verify_ndid_record(&self, ctx: &Context<'_>, request_id: String) -> IdentityStatusGql {
-        let p2p_node = ctx.data_unchecked::<P2pNode>();
-        let target_addr = "10.0.1.50:4433";
-        let (_channel, protocol) = network::connect_with_fallback(target_addr, &p2p_node.tls).await;
+        let blockchain_client =
+            ctx.data_unchecked::<std::sync::Arc<crate::blockchain::BlockchainClient>>();
+
+        let (status, proto) = match blockchain_client.get_transaction_status(&request_id) {
+            Ok(crate::blockchain::TxStatus::Finalized) => {
+                ("Approved".to_string(), "QUIC".to_string())
+            }
+            Ok(crate::blockchain::TxStatus::Queued) => {
+                ("Queued".to_string(), "TCP/TLS".to_string())
+            }
+            Ok(crate::blockchain::TxStatus::Pending) => {
+                ("Pending".to_string(), "TCP/TLS".to_string())
+            }
+            _ => ("Rejected".to_string(), "None".to_string()),
+        };
+
         IdentityStatusGql {
             request_id,
-            status: "Approved".to_string(),
-            active_protocol: protocol.to_string(),
+            status,
+            active_protocol: proto,
         }
     }
 
     async fn get_identity(
         &self,
-        _ctx: &Context<'_>,
+        ctx: &Context<'_>,
         request_id: String,
     ) -> Option<IdentityStatusGql> {
-        Some(IdentityStatusGql {
-            request_id,
-            status: "Pending".to_string(),
-            active_protocol: "QUIC".to_string(),
-        })
+        let blockchain_client =
+            ctx.data_unchecked::<std::sync::Arc<crate::blockchain::BlockchainClient>>();
+
+        match blockchain_client.get_transaction_status(&request_id) {
+            Ok(status) => {
+                let status_str = match status {
+                    crate::blockchain::TxStatus::Pending => "Pending".to_string(),
+                    crate::blockchain::TxStatus::Finalized => "Finalized".to_string(),
+                    crate::blockchain::TxStatus::Failed => "Failed".to_string(),
+                    crate::blockchain::TxStatus::Queued => "Queued".to_string(),
+                };
+                Some(IdentityStatusGql {
+                    request_id,
+                    status: status_str,
+                    active_protocol: "TCP/TLS".to_string(),
+                })
+            }
+            Err(_) => None,
+        }
     }
 }
 
@@ -61,11 +87,15 @@ pub struct MutationRoot;
 impl MutationRoot {
     async fn submit_kyc(
         &self,
-        _ctx: &Context<'_>,
+        ctx: &Context<'_>,
         national_id: String,
         full_name: String,
         bank_code: String,
     ) -> KycResponse {
+        let p2p_node = ctx.data_unchecked::<P2pNode>();
+        let blockchain_client =
+            ctx.data_unchecked::<std::sync::Arc<crate::blockchain::BlockchainClient>>();
+
         let kyc = identity::KycData {
             national_id,
             full_name,
@@ -75,11 +105,65 @@ impl MutationRoot {
         };
         let identity_hash = kyc.compute_hash();
         info!(hash = %identity_hash, "KYC submitted");
+
+        let tx = match blockchain_client.create_transaction(
+            identity_hash.clone(),
+            bank_code.clone(),
+            &p2p_node.keypair,
+        ) {
+            Ok(tx) => tx,
+            Err(e) => {
+                return KycResponse {
+                    request_id: String::new(),
+                    identity_hash,
+                    bank_code,
+                    message: format!("Failed to create blockchain tx: {}", e),
+                };
+            }
+        };
+
+        let tx_id = tx.tx_id.clone();
+
+        let receipt = match blockchain_client.submit(tx).await {
+            Ok(r) => r,
+            Err(e) => {
+                return KycResponse {
+                    request_id: tx_id,
+                    identity_hash,
+                    bank_code,
+                    message: format!("Failed to submit transaction: {}", e),
+                };
+            }
+        };
+
+        let mut p2p_results = Vec::new();
+        for peer in p2p_node.peers() {
+            match p2p_node.send_kyc(peer, identity_hash.clone()).await {
+                Ok(proto) => p2p_results.push(format!("Synced with {} via {}", peer, proto)),
+                Err(e) => p2p_results.push(format!("Failed to sync with {}: {}", peer, e)),
+            }
+        }
+
+        let p2p_summary = if p2p_results.is_empty() {
+            String::new()
+        } else {
+            format!("; P2P sync: {}", p2p_results.join(", "))
+        };
+
+        let status_str = match receipt.status {
+            crate::blockchain::TxStatus::Finalized => "Finalized",
+            crate::blockchain::TxStatus::Queued => "Queued",
+            _ => "Unknown",
+        };
+
         KycResponse {
-            request_id: uuid::Uuid::new_v4().to_string(),
+            request_id: tx_id,
             identity_hash,
             bank_code,
-            message: "KYC submitted successfully".to_string(),
+            message: format!(
+                "KYC submitted successfully (Status: {}){}",
+                status_str, p2p_summary
+            ),
         }
     }
 }

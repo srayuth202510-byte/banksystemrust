@@ -70,9 +70,35 @@ impl P2pNode {
     pub async fn send_kyc(&self, peer_addr: &str, kyc_hash: String) -> Result<Protocol, P2pError> {
         info!(from = %self.bank_code, to = %peer_addr, "Sending KYC data");
         let payload = format!("KYC:{}:{}", self.bank_code, kyc_hash);
-        let _signed = crypto::sign(payload.as_bytes(), &self.keypair)?;
-        let (_channel, protocol) = network::connect_with_fallback(peer_addr, &self.tls).await;
-        info!(protocol = %protocol, "KYC sent via {protocol}");
+        let signed = crypto::sign(payload.as_bytes(), &self.keypair)?;
+
+        let message = P2pMessage {
+            from_bank: self.bank_code.clone(),
+            to_bank: String::new(),
+            payload: payload.into_bytes(),
+            signature: signed.signature,
+            public_key: signed.public_key,
+            timestamp: chrono::Utc::now().timestamp(),
+        };
+
+        let msg_bytes = serde_json::to_vec(&message)
+            .map_err(|e| P2pError::Network(network::NetworkError::TlsError(e.to_string())))?;
+
+        let (channel, protocol) = network::connect_with_fallback(peer_addr, &self.tls).await;
+        if channel.stream.is_none() {
+            return Err(P2pError::Network(network::NetworkError::BothFailed));
+        }
+
+        use crate::network::ConnectionChannel;
+        channel.send(&msg_bytes).await?;
+        let resp_bytes = channel.receive().await?;
+        let resp_str = String::from_utf8_lossy(&resp_bytes);
+
+        if resp_str.starts_with("ERROR:") {
+            return Err(P2pError::HandshakeFailed(resp_str.into_owned()));
+        }
+
+        info!(protocol = %protocol, response = %resp_str, "KYC sent and ACK received");
         Ok(protocol)
     }
 
@@ -108,9 +134,22 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_kyc_fallback() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        drop(listener);
+
         let node = test_node("SCB");
+        let mut server_tls = node.tls.clone();
+        server_tls.ca_certs.clear();
+        let bind_addr = addr.to_string();
+        tokio::spawn(async move {
+            let _ = crate::network::tcp_channel::start_tcp_server(&bind_addr, &server_tls).await;
+        });
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
         let proto = node
-            .send_kyc("127.0.0.1:19999", "hash123".into())
+            .send_kyc(&addr.to_string(), "hash123".into())
             .await
             .unwrap();
         assert_eq!(proto, Protocol::Tcp);

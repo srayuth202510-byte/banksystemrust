@@ -43,7 +43,10 @@ pub async fn connect_quic(
     Ok(NetworkChannel {
         protocol: Protocol::Quic,
         addr: addr.to_string(),
-        stream: Some(crate::network::ConnectionStream::Quic(connection)),
+        stream: Some(crate::network::ConnectionStream::Quic {
+            connection,
+            active_recv: tokio::sync::Mutex::new(None),
+        }),
     })
 }
 
@@ -68,23 +71,22 @@ pub async fn handle_quic_connection(connection: quinn::Connection) {
 
     loop {
         match connection.accept_bi().await {
-            Ok((mut _send, mut _recv)) => {
-                let mut buf = vec![0u8; 65536];
-                match _recv.read(&mut buf).await {
-                    Ok(Some(n)) => {
-                        info!(remote = %remote, len = %n, "QUIC data received");
-                        buf.truncate(n);
-                        if let Err(e) = _send.write_all(&buf).await {
-                            warn!(error = %e, "QUIC send failed");
-                            break;
+            Ok((mut send, mut recv)) => {
+                tokio::spawn(async move {
+                    match recv.read_to_end(65536).await {
+                        Ok(buf) => {
+                            info!(remote = %remote, len = %buf.len(), "QUIC data received");
+                            let response = crate::network::process_p2p_message(&buf);
+                            if let Err(e) = send.write_all(response.as_bytes()).await {
+                                warn!(error = %e, "QUIC send response failed");
+                            }
+                            let _ = send.finish();
+                        }
+                        Err(e) => {
+                            warn!(remote = %remote, error = %e, "QUIC read error");
                         }
                     }
-                    Ok(None) => break,
-                    Err(e) => {
-                        warn!(remote = %remote, error = %e, "QUIC read error");
-                        break;
-                    }
-                }
+                });
             }
             Err(e) => {
                 warn!(remote = %remote, error = %e, "QUIC accept error");
