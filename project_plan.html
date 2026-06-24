@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Plan: High-Performance NDID System on Blockchain with Rust</title>
+    <style>
+        :root {
+            --primary-color: #0f172a;
+            --secondary-color: #2563eb;
+            --accent-color: #10b981;
+            --warning-color: #f59e0b;
+            --text-color: #334155;
+            --bg-light: #f8fafc;
+            --border-color: #e2e8f0;
+            --code-bg: #1e293b;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'Helvetica Neue', Arial;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-light);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #1e3a8a 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+
+        header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .meta-info {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            display: flex;
+            gap: 20px;
+            opacity: 0.7;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-top: 40px;
+            font-size: 1.6rem;
+        }
+
+        h3 {
+            color: var(--secondary-color);
+            margin-top: 25px;
+            font-size: 1.25rem;
+        }
+
+        p, ul, ol {
+            margin-bottom: 20px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+            margin-bottom: 25px;
+            border: 1px solid var(--border-color);
+        }
+
+        .highlight-box {
+            background-color: #eff6ff;
+            border-left: 4px solid var(--secondary-color);
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+
+        .warning-box {
+            background-color: #fffbeb;
+            border-left: 4px solid var(--warning-color);
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:nth-child(even) {
+            background-color: var(--bg-light);
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.06);
+            margin: 20px 0;
+        }
+
+        code {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #e2e8f0;
+            color: #0f172a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+            border-radius: 0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-rust { background-color: #f97316; color: white; }
+        .badge-quic { background-color: #3b82f6; color: white; }
+        .badge-gql { background-color: #ec4899; color: white; }
+        .badge-bc { background-color: #8b5cf6; color: white; }
+
+        .architecture-diagram {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px dashed #cbd5e1;
+            margin: 25px 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .diagram-layer {
+            border: 2px solid var(--primary-color);
+            padding: 12px 25px;
+            border-radius: 6px;
+            margin: 10px 0;
+            width: 80%;
+            text-align: center;
+            background-color: #f1f5f9;
+            box-shadow: 0 2px 4px rgb(0 0 0 / 0.05);
+        }
+
+        .diagram-flow {
+            color: var(--secondary-color);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>แผนงานโครงการระบบ NDID ความเร็วสูงบนบล็อกเชน</h1>
+        <p>Enterprise Hybrid Architecture with Rust, QUIC Auto-Switch & GraphQL Gateway</p>
+        <div class="meta-info">
+            <span><strong>ประเภทระบบ:</strong> Decentralized Identity (NDID)</span>
+            <span><strong>สเปคหลัก:</strong> Rust (Memory Safety & High Concurrency)</span>
+            <span><strong>สถานะเอกสาร:</strong> แผนงานสถาปัตยกรรม (Architecture Blueprint)</span>
+        </div>
+    </header>
+
+    <h2>1. บทนำและเป้าหมายระบบ (Project Overview)</h2>
+    <p>โครงการนี้มุ่งเน้นการสร้างระบบ <strong>National Digital ID (NDID)</strong> ยุคใหม่เพื่อเชื่อมต่อระหว่างกลุ่มธนาคารพาณิชย์ โดยมีโจทย์หลักคือ <strong>"ต้องปลอดภัยสูงสุดตามกฎหมาย PDPA"</strong> และ <strong>"ต้องประมวลผลเร็วระดับเสี้ยววินาที (Real-time)"</strong> ด้วยการนำข้อดีของระบบ Centralized Database (ในธนาคาร) มาผสมผสานกับ Decentralized Ledger (Blockchain) แบบ Hybrid</p>
+    
+    <div class="highlight-box">
+        <strong>ทำไมต้องใช้ Rust?</strong> Rust มีโครงสร้างพื้นฐานที่เด่นเรื่อง <em>Memory Safety</em> ปราศจากช่องโหว่ประเภท Buffer Overflow และมีประสิทธิภาพการทำงานที่สูงเทียบเท่าภาษา C/C++ เหมาะสำหรับการประมวลผลข้อมูลทางการเงินและการเข้ารหัสชั้นสูง (Cryptographic Operations)
+    </div>
+
+    <h2>2. สถาปัตยกรรมระบบ (System Architecture)</h2>
+    <p>ระบบจะถูกแยกออกเป็น 3 เลเยอร์หลักเพื่อแบ่งแยกหน้าที่อย่างชัดเจน (Separation of Concerns) และป้องกันไม่ให้ระบบบล็อกเชนหน่วงการทำงานของ Core Banking ดั้งเดิม:</p>
+
+    <div class="architecture-diagram">
+        <div class="diagram-layer" style="border-color: var(--badge-gql);">
+            <strong>[ Mobile App / Web Client ]</strong>
+        </div>
+        <div class="diagram-flow">▼ ยิงผ่าน HTTPS / JSON (GraphQL Query/Subscription)</div>
+        <div class="diagram-layer" style="border-color: var(--secondary-color); background-color: #eff6ff;">
+            <strong>GraphQL API Gateway</strong> <span class="badge badge-rust">Rust</span> <span class="badge badge-gql">async-graphql</span><br>
+            (ทำหน้าที่คุมสิทธิ์ ยุบรวม Request และพุชสถานะแบบ Real-time ด้วย WebSockets)
+        </div>
+        <div class="diagram-flow">▼ สื่อสารภายในด้วยท่อความเร็วสูง QUIC / TCP Auto-Switch</div>
+        <div style="display: flex; gap: 20px; width: 85%; justify-content: space-between;">
+            <div class="diagram-layer" style="width: 45%; border-color: var(--accent-color); background-color: #ecfdf5;">
+                <strong>Bank Node Service</strong><br>
+                <span class="badge badge-rust">Rust</span> <span class="badge badge-quic">quinn</span><br>
+                เชื่อมต่อระบบปิด Core Banking, สแกนหน้า และรับส่งข้อมูล P2P ระหว่างธนาคาร
+            </div>
+            <div class="diagram-layer" style="width: 45%; border-color: #8b5cf6; background-color: #f5f3ff;">
+                <strong>Blockchain Adapter</strong><br>
+                <span class="badge badge-rust">Rust</span> <span class="badge badge-bc">Substrate</span><br>
+                เป็น Private Ledger ร่วมบันทึกสถานะธุรกรรมและค่า Hash ที่ห้ามแก้ไข
+            </div>
+        </div>
+    </div>
+
+    <h2>3. แผนกลยุทธ์ความเร็วและความปลอดภัย (Speed & Security Strategy)</h2>
+    
+    <h3>3.1 การรักษาความปลอดภัยและความเป็นส่วนตัว (Security & Privacy)</h3>
+    <ul>
+        <li><strong>Zero Data on Chain:</strong> ห้ามนำข้อมูลระบุตัวตนบุคคล (PII) เช่น ชื่อ นามสกุล หรือรูปถ่าย ขึ้นสู่บล็อกเชนโดยเด็ดขาด บนบล็อกเชนจะเก็บเฉพาะ <code>ค่า Hash (SHA-256)</code> และสถานะธุรกรรมเท่านั้น</li>
+        <li><strong>Encrypted P2P Data Tunnel:</strong> เมื่อเกิดการอนุมัติแชร์ข้อมูล ข้อมูลดิบจะถูกส่งตรงจากธนาคารต้นทาง (IdP) ไปยังธนาคารปลายทาง (RP) แบบ Peer-to-Peer โดยตรง ไม่ผ่านตัวกลางใดๆ</li>
+        <li><strong>Permissioned Blockchain:</strong> เลือกใช้ Enterprise Blockchain (เช่น Substrate Framework) ที่จำกัดผู้มีสิทธิ์เข้าร่วมเฉพาะสถาบันการเงินที่ได้รับอนุญาตเท่านั้น</li>
+    </ul>
+
+    <h3>3.2 การประมวลผลความเร็วสูง (High Performance)</h3>
+    <ul>
+        <li><strong>QUIC (HTTP/3)เป็นแกนหลัก:</strong> ใช้โปรโตคอล QUIC เพื่อลดขั้นตอน Handshake ในการเชื่อมต่อเครือข่ายระหว่างโหนดจากปกติลงเหลือเพียง 0-RTT หรือ 1-RTT ทำให้ตอบสนองเร็วกว่า TCP แบบดั้งเดิม</li>
+        <li><strong>QUIC / TCP Auto-Switch (Fallback Mechanism):</strong> เพิ่มความทนทาน (Resilience) ให้กับระบบ หากเครือข่ายปลายทางหรือไฟร์วอลล์บล็อกพอร์ต UDP ระบบจะสลับมาใช้ท่อ TCP + TLS 1.3 ทันทีโดยออโต้</li>
+        <li><strong>Asynchronous Core:</strong> พัฒนาสถาปัตยกรรมตัวเซิร์ฟเวอร์บนเครื่องยนต์ <code>tokio</code> (Asynchronous runtime ของ Rust) เพื่อรองรับ Concurrency ระดับหลายหมื่นธุรกรรมพร้อมกัน</li>
+    </ul>
+
+    <div class="warning-box">
+        <strong>ข้อควรระวังฝั่งเครือข่ายธนาคาร:</strong> เนื่องจาก QUIC ทำงานบน UDP ฝ่ายความปลอดภัยของธนาคารมักบล็อกพอร์ตประเภทนี้เป็นค่าเริ่มต้น แผนงานจึงระบุให้เปิดใช้ระบบ Auto-Switch บนฝั่ง Client สำหรับลูกค้าภายนอก แต่ฝั่งหลังบ้านระหว่างธนาคาร (Interbank) จะต้องล็อกพอร์ตและทำ Allowlist ไอพีร่วมกันอย่างเคร่งครัด
+    </div>
+
+    <h2>4. แผนผังโครงสร้างซอร์สโค้ดในภาษา Rust (Project Structure)</h2>
+    <p>โครงสร้างแบบ Microservices ที่เขียนด้วยภาษา Rust โดยใช้ประโยชน์จากนิเวศน์ Crate ยอดนิยม:</p>
+    <pre>ndid-highspeed-system/
+├── Cargo.toml               # การจัดการ Dependencies เช่น axum, async-graphql, quinn
+├── src/
+│   ├── main.rs              # จุดสตาร์ทระบบ GraphQL Gateway & Web Server ด้วย Axum
+│   ├── schema.rs            # นิยาม GraphQL Query, Mutation และ Subscription
+│   ├── identity.rs          # ระบบจัดการโครงสร้างข้อมูล และการแปลงข้อมูลเป็น SHA-256 Hash
+│   ├── blockchain.rs        # โมดูลเชื่อมต่อคำสั่งสัญญาอัจฉริยะ (Substrate Node Client)
+│   ├── crypto.rs            # ระบบเข้ารหัสความปลอดภัยระดับธนาคาร (ED25519 & AES-GCM)
+│   └── p2p_quic.rs          # ท่อรับส่งข้อมูล KYC ความเร็วสูงด้วยโปรโตคอล QUIC</pre>
+
+    <h2>5. ตัวอย่างซอร์สโค้ดหลักของระบบ (Core Implementation Snippet)</h2>
+    <p>ด้านล่างนี้คือโค้ดตัวอย่างในภาษา Rust ที่ผสานรวม <strong>GraphQL Entry Point</strong> เข้ากับระบบ <strong>QUIC/TCP Fallback Logic</strong>:</p>
+
+    <pre><code class="language-rust">use async_graphql::{Object, Context, SimpleObject};
+use tokio::time::{timeout, Duration};
+
+// 1. โครงสร้างข้อมูลส่งกลับผ่าน GraphQL ไปยังหน้าบ้าน
+#[derive(SimpleObject)]
+pub struct IdentityStatus {
+    pub request_id: String,
+    pub status: String,          // Pending, Approved, Rejected
+    pub active_protocol: String, // QUIC (0-RTT) หรือ TCP (Fallback)
+}
+
+pub struct QueryRoot;
+
+#[Object]
+impl QueryRoot {
+    // 2. GraphQL Resolver สำหรับตรวจดูสถานะ NDID ความเร็วสูง
+    async fn verify_ndid_record(&self, _ctx: &Context<'_>, request_id: String) -> IdentityStatus {
+        let target_bank_node = "10.0.1.50:443"; // ไอพีปลายทางของธนาคารร่วมเครือข่าย
+        
+        // เรียกใช้ฟังก์ชันสลับท่อเครือข่ายอัจฉริยะ
+        let protocol_used = match connect_with_fallback(target_bank_node).await {
+            NetworkChannel::Quic => "QUIC (0-RTT) - Ultra Fast",
+            NetworkChannel::Tcp  => "TCP + TLS 1.3 - Fallback Mode",
+        };
+
+        IdentityStatus {
+            request_id,
+            status: "Approved".to_string(),
+            active_protocol: protocol_used.to_string(),
+        }
+    }
+}
+
+// 3. ระบบจำลองกลไก Auto-Switch (Happy Eyeballs Logic)
+enum NetworkChannel { Quic, Tcp }
+
+async fn connect_with_fallback(addr: &str) -> NetworkChannel {
+    let quic_timeout = Duration::from_millis(500); // หาก QUIC โดนบล็อกหรือช้าเกิน 500ms ให้สลับทันที
+
+    match timeout(quic_timeout, simulate_quic_connect(addr)).await {
+        Ok(Ok(_)) => NetworkChannel::Quic, // สามารถเชื่อมต่อผ่าน UDP/QUIC ได้สำเร็จ
+        _ => {
+            // เกิด Timeout หรือเกิด Error (เช่น โดนบล็อกพอร์ต UDP) สลับไป TCP อัตโนมัติ
+            simulate_tcp_connect(addr).await;
+            NetworkChannel::Tcp
+        }
+    }
+}
+
+async fn simulate_quic_connect(_addr: &str) -> Result<(), ()> { Ok(()) }
+async fn simulate_tcp_connect(_addr: &str) {}</code></pre>
+
+    <h2>6. ตารางเปรียบเทียบสถาปัตยกรรม (Comparison Matrix)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>มิติการเปรียบเทียบ</th>
+                <th>ระบบดั้งเดิม (TCP + Centralized API)</th>
+                <th>ระบบที่เสนอ (GraphQL + QUIC + Rust Blockchain)</th>
+                <th>ประโยชน์เชิงธุรกิจของธนาคาร</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>ความเร็วในการตั้งการเชื่อมต่อ</strong></td>
+                <td>ช้า (2-3 RTT จาก TCP + TLS Handshake แยกกัน)</td>
+                <td><strong>เร็วสูงสุด (0-RTT ถึง 1-RTT)</strong> เพราะควบรวมในขั้นตอนเดียว</td>
+                <td>แอปพลิเคชันตอบสนองไวขึ้น ลูกค้าไม่ต้องรอนาน ลดอัตราการปิดแอปหนี</td>
+            </tr>
+            <tr>
+                <td><strong>การจัดการเมื่อเครือข่ายมีปัญหา</strong></td>
+                <td>เกิดการบล็อกคอขวดที่ท่อหลัก (Head-of-Line Blocking)</td>
+                <td><strong>แยกสตรีมอิสระผ่าน QUIC</strong> หากข้อมูลคนแรกร่วง คนอื่นยังวิ่งได้ปกติ</td>
+                <td>ระบบมีความเสถียรสูง (High Availability) แม้ในช่วงเวลาเร่งด่วนที่คนใช้เยอะ</td>
+            </tr>
+            <tr>
+                <td><strong>การเรียกใช้ข้อมูลของหน้าบ้าน</strong></td>
+                <td>ยิงหลายรอบ (Multiple REST API Endpoints)</td>
+                <td><strong>ยิงรอบเดียวจบ (Single GraphQL Endpoint)</strong></td>
+                <td>ลดปริมาณแบนด์วิธของเซิร์ฟเวอร์ธนาคาร และทำให้เขียนโค้ดหน้าบ้านง่ายขึ้น</td>
+            </tr>
+            <tr>
+                <td><strong>ความน่าเชื่อถือของข้อมูล</strong></td>
+                <td>ต้องทำ Reconciliation (กระทบยอด) สิ้นวัน</td>
+                <td><strong>แก้ไขประวัติไม่ได้ (Immutable Blockchain Ledger)</strong></td>
+                <td>ตัดต้นทุนการตรวจสอบบัญชีทุจริตและการฟอกเงิน (AML/Audit) ได้แบบ Real-time</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>7. ข้อควรพิจารณาเพิ่มเติมสำหรับระบบ Production (Production Readiness Checklist)</h2>
+
+    <h3>7.1 API Versioning & Backward Compatibility</h3>
+    <ul>
+        <li>ธนาคารแต่ละแห่งอัปเกรดระบบไม่พร้อมกัน ต้องออกแบบ API versioning (เช่น <code>/v1/</code>, <code>/v2/</code>) ตั้งแต่แรก</li>
+        <li>ใช้ <strong>GraphQL schema deprecation</strong> — ทำเครื่องหมาย field ที่เลิกใช้ก่อนลบจริง 1-2 release cycle</li>
+        <li>ต้องมี <strong>migration guide</strong> สำหรับธนาคารสมาชิกเมื่อมีการ breaking change</li>
+    </ul>
+
+    <h3>7.2 Audit Trail & Non-Repudiation</h3>
+    <ul>
+        <li>ทุกธุรกรรมต้องลงลายเซ็นดิจิทัล <strong>ED25519</strong> และเก็บ cryptographic proof ว่าใครส่งอะไรตอนไหน</li>
+        <li>แม้แต่ admin หรือ operator ก็ต้องไม่สามารถแก้ไข audit log ย้อนหลังได้ — ใช้ blockchain ledger เป็น audit trail ไปในตัว</li>
+        <li>รองรับมาตรฐาน <strong>ISO 27001</strong> และข้อกำหนดของธนาคารแห่งประเทศไทย (ธปท.) ด้านการตรวจสอบทางการเงิน</li>
+    </ul>
+
+    <h3>7.3 Rate Limiting & Circuit Breaker</h3>
+    <ul>
+        <li>ป้องกัน <strong>Dos / DDoS</strong> และ load spike จากธนาคารสมาชิกด้วย rate limiting แบบ per-node และ per-IP</li>
+        <li>ใช้ <strong>Circuit Breaker pattern</strong> (เช่น <code>tokio-retry</code> + <code>futures-retry</code>) — ถ้า Bank Node หนึ่งล่ม ต้องตัดวงจรไม่ให้ request ถาโถมซ้ำจน systemic failure</li>
+        <li>กำหนด <strong>backpressure strategy</strong> ชัดเจน: queue, drop, หรือ return error ทันทีเมื่อเกิน capacity</li>
+    </ul>
+
+    <h3>7.4 Key Management & HSM Integration</h3>
+    <ul>
+        <li>Private key สำหรับ sign ธุรกรรม blockchain ต้องเก็บใน <strong>Hardware Security Module (HSM)</strong> ที่รองรับ PKCS#11 หรือ cloud HSM (AWS CloudHSM, Azure Dedicated HSM)</li>
+        <li>ห้ามเก็บ private key ใน filesystem, environment variable, หรือ secret store ที่ไม่มี hardware root of trust</li>
+        <li>ออกแบบ <strong>key rotation policy</strong> — เปลี่ยน key ทุก 90 วัน โดยไม่ให้กระทบธุรกรรมที่กำลังดำเนินอยู่</li>
+    </ul>
+
+    <h3>7.5 Monitoring, Observability & Alerting</h3>
+    <ul>
+        <li>ส่ง <strong>metrics</strong> เข้า Prometheus/Grafana — วัดทั้ง request rate, latency (P50/P95/P99), error rate, และ connection pool saturation</li>
+        <li>ใช้ <strong>distributed tracing</strong> ด้วย OpenTelemetry — ตาม request จาก GraphQL Gateway ไปยัง Bank Node และ Blockchain Adapter</li>
+        <li>มี <strong>structured logging</strong> (JSON format) — ต้อง grep หา root cause ได้เร็วเวลา incident</li>
+        <li>ตั้ง <strong>Alerting rules</strong>: เช่น P99 latency > 500ms นานเกิน 5 นาที, error rate > 1%, หรือ connection drop spike</li>
+    </ul>
+
+    <h3>7.6 Rolling Upgrade & Zero-Downtime Deployment</h3>
+    <ul>
+        <li>Banking system ต้อง upgrade โดยไม่ปิดระบบ — รองรับ <strong>rolling update</strong> และ <strong>blue-green deployment</strong></li>
+        <li>ต้องมี <strong>graceful shutdown</strong> — SIGTERM แล้วรอให้ request ค้างอยู่เสร็จก่อนค่อยปิด (tokio signal + drain timeout)</li>
+        <li>Connection <strong>draining</strong> — เมื่อ node กำลังจะอัปเกรด ต้องหยุดรับ request ใหม่ แต่รอให้ connection เดิมสมบูรณ์ก่อน</li>
+    </ul>
+
+    <h3>7.7 Data Retention & Deletion Policy (PDPA Compliance)</h3>
+    <ul>
+        <li>เจ้าของข้อมูลสามารถขอ <strong>ลบข้อมูล (Right to Erasure)</strong> ได้ — ต้องออกแบบ cascade deletion หรือ anonymization flow</li>
+        <li>ใน blockchain ที่ immutable ต้องใช้วิธี <strong>key shredding</strong> (ลบ key ที่ใช้เข้ารหัส ทิ้งให้ cipher text เปล่าประโยชน์) + เก็บ zero-knowledge proof แทน</li>
+        <li>กำหนด retention period ของ logs, audit trail, และ PII cache ให้ชัดเจน และมี automated cleanup job</li>
+    </ul>
+
+    <h3>7.8 Load Testing & SLA Benchmark</h3>
+    <ul>
+        <li>ไม่ใช่แค่ unit test — ต้องทำ <strong>stress test / soak test</strong> ก่อน production (ใช้เครื่องมือเช่น <code>oha</code>, <code>wrk2</code>, หรือ <code>locust</code>)</li>
+        <li>กำหนด <strong>SLA benchmark</strong> ที่วัดผลได้ เช่น P99 latency < 200ms, throughput > 10,000 tps, uptime 99.99%</li>
+        <li>ทดสอบ <strong>failure scenarios</strong>: ตัด network node, revoke certificate, HSM ล่ม, blockchain node lag — ระบบต้อง degrade gracefully ไม่ใช่ crash</li>
+    </ul>
+
+    <h2>8. ข้อควรระวังและความเสี่ยงเพิ่มเติม (Additional Risk & Considerations)</h2>
+
+    <h3>8.1 ความปลอดภัยระดับโครงสร้างพื้นฐาน (Infrastructure Security)</h3>
+    <ul>
+        <li><strong>mTLS + Certificate Pinning:</strong> การเชื่อมต่อระหว่างธนาคารต้องใช้ mutual TLS ทุกฝั่ง ใบรับรองต้องมี CA hierarchy ที่เชื่อถือได้ร่วมกัน และรองรับการเพิกถอนใบรับรองทันที (CRL/OCSP stapling) หากมี node ถูกลักลอบเข้าถึง</li>
+        <li><strong>Supply Chain Security:</strong> Rust crate ทุกตัวต้องผ่าน <code>cargo vet</code> หรือ <code>cargo crev</code> ก่อนนำมาใช้ใน production — banking sector เป็นเป้าหมายหลักของการโจมตีทาง supply chain (เช่น dependency confusion, typo-squatting)</li>
+        <li><strong>Network Segmentation:</strong> Bank Node, Blockchain Adapter, และ GraphQL Gateway ต้องอยู่คนละ network segment กัน มี firewall policy ที่ restrict การเข้าถึงระหว่าง layer</li>
+    </ul>
+
+    <h3>8.2 ข้อพิจารณาด้าน Blockchain (Blockchain-Specific Concerns)</h3>
+    <ul>
+        <li><strong>Consensus & Finality:</strong> ต้องเลือก consensus algorithm ที่เหมาะสม — PBFT หรือ Substrate BABE/GRANDPA? ต้องการกี่ node ถึง finalize? กรณี network partition หรือ node ล่มหมู่จะเกิด fork หรือไม่ และมี mechanism กู้คืนอัตโนมัติอย่างไร</li>
+        <li><strong>Conflict Resolution:</strong> ถ้าสองธนาคารอัปเดต identity record พร้อมกัน (race condition) ใครชนะ? ต้องมี policy ชัดเจน เช่น last-writer-wins, CRDT-based merge, หรือ human-in-the-loop approval</li>
+        <li><strong>Cost Projection:</strong> การรัน Substrate node 24/7 มีค่าใช้จ่ายแฝง (infra, ops, cross-datacenter bandwidth, consensus overhead) ควรเปรียบเทียบ ROI กับ centralized database + cryptographic audit trail ว่าคุ้มกับโจทย์จริงหรือไม่</li>
+        <li><strong>Blockchain Node Version Drift:</strong> เมื่อเวลาผ่านไป แต่ละธนาคารอาจรัน blockchain node คนละ version — ต้องมี backward compatibility protocol และ hard fork coordination plan</li>
+    </ul>
+
+    <h3>8.3 Business Continuity & Disaster Recovery</h3>
+    <ul>
+        <li><strong>DR / Multi-Region Failover:</strong> RPO (Recovery Point Objective) และ RTO (Recovery Time Objective) เท่าไหร่? กรณี disaster ทั้ง data center ต้องมี secondary region ที่พร้อมรับ traffic โดยไม่ต้อง rebuild blockchain node จาก cold storage</li>
+        <li><strong>Personnel Security:</strong> ใช้ <strong>4-eyes principle</strong> สำหรับทุก admin operation (เปลี่ยน config, grant/revoke certificate, sign smart contract upgrade) และมี access log ที่ audit ย้อนหลังได้แบบ tamper-proof</li>
+        <li><strong>Secrets Rotation Drill:</strong> ต้องซ้อมเปลี่ยน certificate และ key เป็นระยะ เพื่อให้แน่ใจว่า DR plan ใช้ได้จริง ไม่ใช่แค่เขียนไว้ใน文档</li>
+    </ul>
+
+    <h3>8.4 Fraud Detection & Compliance</h3>
+    <ul>
+        <li><strong>Liveness Detection:</strong> ระบบสแกนใบหน้าต้องกัน deepfake, replay attack, และ presentation attack — ใช้ passive liveness + challenge-response + AI-based spoof detection</li>
+        <li><strong>Cross-Border Data Transfer:</strong> ถ้าต้องเชื่อม NDID กับต่างประเทศ (cross-border KYC) ต้องตรวจสอบข้อจำกัดทางกฎหมายของแต่ละประเทศ (เช่น GDPR ใน EU, China Data Security Law) ว่าข้อมูล PII สามารถส่งข้ามประเทศได้หรือไม่</li>
+        <li><strong>AML / CTF Integration:</strong> ระบบต้องสามารถส่ง alert อัตโนมัติเมื่อ pattern การทำธุรกรรมเข้าข่ายฟอกเงิน (transaction monitoring) และเชื่อมต่อกับระบบ AMLO ของไทย</li>
+    </ul>
+
+    <h3>8.5 Operational Readiness</h3>
+    <ul>
+        <li><strong>NTP Synchronization:</strong> Audit trail, blockchain consensus, และ event ordering จะเชื่อถือไม่ได้ถ้าเวลาในแต่ละ node ไม่ตรงกัน — ต้องใช้ dedicated NTP stratum พร้อม monitor skew ทุก 5 นาที</li>
+        <li><strong>Admin Tooling:</strong> ไม่ใช่แค่ API — ต้องมี CLI และ/หรือ Web UI สำหรับ operator (เช่น ดูสถานะ node, force stop/start service, เรียกดู audit log, revoke certificate) โดยไม่ต้องแก้ database โดยตรง</li>
+        <li><strong>Capacity Planning:</strong> ต้องมี baseline ของ CPU/Memory/Network/Storage usage ต่อ node เพื่อให้ scaling และ budgeting แม่นยำ — รวมถึง bottleneck analysis (เช่น IOPS ของ disk ที่ใช้รัน blockchain node)</li>
+    </ul>
+
+    <h2>9. คอขวด ความปลอดภัย และ Communication Mismatch ที่ต้องระวัง (Bottlenecks, Security & Protocol Gaps)</h2>
+
+    <h3>9.1 คอขวดด้านประสิทธิภาพ (Performance Bottlenecks)</h3>
+    <ul>
+        <li><strong>Blockchain Consensus Latency:</strong> หากใช้ BFT consensus (3f+1 nodes) throughput จะถูกจำกัดที่ความเร็วของ consensus algorithm — Substrate BABE/GRANDPA อาจทำ ~1,000-3,000 tps แต่ถ้าเป็น banking clearing load (หลายหมื่น tx/s) blockchain จะเป็นคอขวดทันที ต้องแบ่งเป็น off-chain settlement + on-chain hash recording</li>
+        <li><strong>QUIC/TCP Fallback Overshoot:</strong> หากตั้ง <code>timeout</code> สำหรับ QUIC fallback ต่ำเกินไป (เช่น 500ms) แต่ interbank latency ปกติอยู่ที่ 300-800ms ระบบจะ fallback ไป TCP ตลอดเวลา ทำให้ไม่เคยได้ประโยชน์จาก QUIC เลย — ต้อง tune threshold แบบ adaptive</li>
+        <li><strong>GraphQL N+1 Query Problem:</strong> ถ้า resolvers แต่ละตัวยิง database แยกกันโดยไม่ใช้ DataLoader/ batch, GraphQL อาจช้ากว่า REST หลายเท่า โดยเฉพาะกรณี list identity records แล้ว resolve nested fields ทีละ record</li>
+        <li><strong>HSM Signing Throughput Ceiling:</strong> HSM แต่ละรุ่นมี signing ops/sec จำกัด (เช่น ~1,000-10,000 ops/sec) หากทุก blockchain transaction ต้อง sign ด้วย HSM จะกลายเป็น bottleneck สำหรับ high-throughput</li>
+        <li><strong>Legacy Core Banking IO:</strong> Core Banking ที่มีอยู่เดิมมักใช้ relational DB แบบ monolithic — under high concurrency (10k+ requests) database connection pool จะหมด และ query จะ queue ทำให้เกิด cascading latency ทั่วทั้งระบบ</li>
+        <li><strong>Certificate Chain Validation on Every Handshake:</strong> mTLS + full chain validation (รวม CRL/OCSP) เพิ่ม latency ทุก connection — ต้อง implement session resumption (TLS session cache) และ QUIC 0-RTT เพื่อลด cost</li>
+    </ul>
+
+    <h3>9.2 ช่องโหว่ด้านความปลอดภัย (Security Blind Spots)</h3>
+    <ul>
+        <li><strong>QUIC Amplification Attack:</strong> QUIC ทำงานบน UDP ซึ่ง susceptible ต่อ DDoS amplification (request เล็ก แต่ response ใหญ่) — ต้องจำกัด response size, ใช้ connection migration verification และ rate limiting ที่ edge LB</li>
+        <li><strong>GraphQL Query Depth/Complexity Attack:</strong> Malicious client สามารถส่ง query ที่ทำให้ server ตีความซ้ำกันเป็น exponential (เช่น nested 10 layer) จน OOM หรือ CPU burn — ต้องตั้ง <code>max_depth</code>, <code>max_complexity</code> และ cost analysis ทุก query</li>
+        <li><strong>TOCTOU (Time-of-Check to Time-of-Use):</strong> Identity verification เกิดขึ้นที่ time A แต่ actual data access เกิดขึ้นที่ time B — ข้อมูลอาจถูก revoke หรือเปลี่ยนแปลงระหว่างนั้น ต้อง validate status แบบ real-time ทุกครั้งก่อนปล่อย PII</li>
+        <li><strong>Stale Certificate / CRL Propagation Delay:</strong> ถ้า node ถูกลักลอบเข้าถึงและ revoke certificate แล้ว แต่ CRL ยังไม่ propagate ไปถึง node อื่น — จะยังมีช่องว่างให้ attacker ส่ง poisoned data ได้ ต้องใช้ OCSP stapling แบบสดทุก handshake</li>
+        <li><strong>Panic Safety in Rust:</strong> หากเกิด panic ใน tokio task ระหว่างที่กำลังประมวลผลธุรกรรม (โดยเฉพาะใน async resolver หรือ blockchain signing) — state leak, partial write, หรือ inconsistent data ได้ ต้องใช้ <code>catch_unwind</code> และ idempotency guard</li>
+        <li><strong>Log Injection / Audit Tampering:</strong> หาก attacker ส่งข้อมูลที่มี control character ใส่ logs อาจทำให้ structured log parser ผิดพลาดและบดบังร่องรอยการโจมตี — ต้อง sanitize ทุก input ก่อน write log และ sign audit log ด้วย HMAC</li>
+        <li><strong>Side-Channel Timing Attack on Crypto:</strong> AES-GCM และ ED25519 ใน Rust อาจ leak timing information หากไม่ได้ใช้ constant-time implementation — ต้องใช้ <code>constant_time_eq</code> และ audit crypto crate ทุกตัว</li>
+    </ul>
+
+    <h3>9.3 Communication Mismatch / Protocol Gap (การไม่สอดคล้องของโปรโตคอล)</h3>
+    <ul>
+        <li><strong>Legacy Protocol Translation:</strong> Core Banking ของแต่ละธนาคารพูดภาษาโปรโตคอลไม่เหมือนกัน — บางแห่งใช้ ISO 8583 (การเงิน), บางแห่งใช้ SOAP/XML, บางแห่งใช้ IBM MQ — ต้องมี <strong>protocol adapter layer</strong> ที่แปลงเป็น GraphQL/Protobuf ที่ระบบ NDID เข้าใจ</li>
+        <li><strong>Sync → Async Mismatch:</strong> Core Banking ดั้งเดิมเป็น synchronous blocking (รอผลถึงจะทำต่อ) แต่ระบบ NDID ใหม่เป็น async event-driven — ถ้า backend ยังเป็น sync อยู่ async frontend จะไม่มีประโยชน์ เพราะ最终还是 ต้องรอ blocking call อยู่ดี ต้องทำ <strong>异步 boundary</strong> ให้ชัดเจน</li>
+        <li><strong>Error Semantics Mapping:</strong> Legacy banking ส่ง error เป็น numeric code + fixed message แต่ GraphQL ส่งเป็น structured error ใน response body — ถ้าแปล semantics ไม่ตรง client จะตีความผิด เช่น "timeout" กับ "denied" ต้อง map ให้ตรงกัน</li>
+        <li><strong>Identity Schema Divergence:</strong> แต่ละธนาคารมี customer data schema ไม่เหมือนกัน (บางแห่งมี 10 fields, บางแห่ง 50 fields, บางแห่งใช้ national ID บางแห่งใช้ passport) — ต้องมี canonical schema + field mapping table ที่ audit ได้ + versioned transform rule</li>
+        <li><strong>Distributed Transaction Atomicity:</strong> กระบวนการ NDID หนึ่ง flow ต้องเขียนถึง Core Banking + Blockchain Adapter + P2P Tunnel ถ้าตัวใดตัวหนึ่งล้มเหลว ต้อง rollback ทั้งหมดหรือไม่? — distributed transaction โดยไม่มี coordinator ต้องออกแบบ saga pattern + compensating transaction</li>
+        <li><strong>QUIC Library Interop:</strong> Rust quinn กับ QUIC implementation ของ infrastructure (Envoy, NGINX, Cloudflare) อาจ interpret spec ต่างกันเล็กน้อย — ต้อง interop test ทุกคู่ก่อน deploy จริง</li>
+        <li><strong>Load Balancer Blind Spot:</strong> LB รุ่นเก่า (NGINX 1.x, HAProxy 1.x) ไม่ support HTTP/3 หรือ UDP health check — ถ้าใช้ QUIC แต่ LB ตรวจ health node ไม่ได้ จะเกิด routing ไป node ที่ dead ได้ ต้อง upgrade LB รุ่นที่รองรับ HTTP/3 หรือใช้ L4 UDP proxy</li>
+    </ul>
+
+    <h2>10. แผนการทดสอบและการส่งมอบ (Deployment & Testing Steps)</h2>
+    <ol>
+        <li><strong>สัปดาห์ที่ 1-4 (Sandbox Isolation):</strong> พัฒนาตัวโปรโตไทป์โครงสร้างหลักด้วย Rust และเปิดใช้งานระบบจำลอง Blockchain Node ขึ้นมาในสถาปัตยกรรมปิดเพื่อทดสอบค่าขีดจำกัดความเร็ว</li>
+        <li><strong>สัปดาห์ที่ 5-8 (Network Hardening & Firewall Tuning):</strong> นำระบบเครือข่าย QUIC เข้าไปคุยกับฝ่าย Network Security ของธนาคารเพื่อเซ็ตค่าอัปเดตตัว Load Balancer (เช่น Envoy/NGINX รองรับ HTTP/3) และตั้งค่ายอมรับพอร์ต UDP ภายใต้เงื่อนไขความปลอดภัย</li>
+        <li><strong>สัปดาห์ที่ 9-12 (GraphQL Integration & Fallback Drill):</strong> ต่อพ่วงแอปพลิเคชันหน้าบ้านเข้ากับคลังข้อมูล GraphQL Gateway ทำการทดลองสุ่มดึงปลั๊กเครือข่าย UDP ออกเพื่อทดสอบว่าระบบสลับไปใช้ TCP ได้อย่างนุ่มนวลและไม่ส่งผลเสียต่อธุรกรรมของลูกค้า</li>
+    </ol>
+</div>
+
+</body>
+</html>
