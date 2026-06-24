@@ -1,23 +1,13 @@
+// ระบบนี้คือ High-Speed Blockchain Banking System สำหรับ NDID (National Digital ID)
+// ระบบพัฒนาขึ้นเพื่อรองรับการทำธุรกรรมธนาคารข้ามประเทศอย่างรวดเร็ว
 // ภาษา: Rust, รันไทม์: Tokio async, โปรโตคอล: QUIC + TCP/TLS 1.3 Auto-Fallback
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
 // ชั้นบริการ API: GraphQL (async-graphql) over Axum
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 use tracing::{error, info, warn};
 
 pub use crate::config::BlockchainConfig;
@@ -111,22 +101,30 @@ impl BlockchainClient {
             .timeout(Duration::from_secs(config.timeout_secs + 2))
             .build()
             .unwrap_or_default();
-            
+
         let mut opts = rocksdb::Options::default();
         opts.create_if_missing(true);
         let (db, _temp_dir) = if let Some(path) = &config.db_path {
             match rocksdb::DB::open(&opts, path) {
                 Ok(db) => (db, None),
                 Err(e) => {
-                    tracing::warn!("Failed to open rocksdb at {}: {}, falling back to temp dir", path, e);
-                    let temp = tempfile::tempdir().map_err(|e| BlockchainError::DatabaseError(e.to_string()))?;
-                    let db = rocksdb::DB::open(&opts, temp.path()).map_err(|e| BlockchainError::DatabaseError(e.to_string()))?;
+                    tracing::warn!(
+                        "Failed to open rocksdb at {}: {}, falling back to temp dir",
+                        path,
+                        e
+                    );
+                    let temp = tempfile::tempdir()
+                        .map_err(|e| BlockchainError::DatabaseError(e.to_string()))?;
+                    let db = rocksdb::DB::open(&opts, temp.path())
+                        .map_err(|e| BlockchainError::DatabaseError(e.to_string()))?;
                     (db, Some(temp))
                 }
             }
         } else {
-            let temp = tempfile::tempdir().map_err(|e| BlockchainError::DatabaseError(e.to_string()))?;
-            let db = rocksdb::DB::open(&opts, temp.path()).map_err(|e| BlockchainError::DatabaseError(e.to_string()))?;
+            let temp =
+                tempfile::tempdir().map_err(|e| BlockchainError::DatabaseError(e.to_string()))?;
+            let db = rocksdb::DB::open(&opts, temp.path())
+                .map_err(|e| BlockchainError::DatabaseError(e.to_string()))?;
             (db, Some(temp))
         };
 
@@ -158,7 +156,10 @@ impl BlockchainClient {
         })
     }
 
-    pub async fn submit(&self, tx: BlockchainTransaction) -> Result<TransactionReceipt, BlockchainError> {
+    pub async fn submit(
+        &self,
+        tx: BlockchainTransaction,
+    ) -> Result<TransactionReceipt, BlockchainError> {
         let timeout_dur = Duration::from_secs(self.config.timeout_secs);
         match timeout(timeout_dur, self.send_to_node(&tx)).await {
             Ok(Ok(receipt)) => {
@@ -167,8 +168,9 @@ impl BlockchainClient {
             }
             Ok(Err(BlockchainError::NodeUnreachable(_))) | Err(_) => {
                 warn!(tx_id = %tx.tx_id, "Blockchain node unreachable or timeout, queuing");
-                let tx_bytes = bincode::serialize(&tx)
-                    .map_err(|e| BlockchainError::TransactionFailed(format!("serialization failed: {e}")))?;
+                let tx_bytes = bincode::serialize(&tx).map_err(|e| {
+                    BlockchainError::TransactionFailed(format!("serialization failed: {e}"))
+                })?;
                 let _ = self.db.put(tx.tx_id.as_bytes(), tx_bytes);
                 Ok(TransactionReceipt {
                     tx_id: tx.tx_id,
@@ -184,7 +186,10 @@ impl BlockchainClient {
         }
     }
 
-    async fn send_to_node(&self, tx: &BlockchainTransaction) -> Result<TransactionReceipt, BlockchainError> {
+    async fn send_to_node(
+        &self,
+        tx: &BlockchainTransaction,
+    ) -> Result<TransactionReceipt, BlockchainError> {
         let payload = serde_json::to_value(tx)
             .map_err(|e| BlockchainError::TransactionFailed(e.to_string()))?;
 
@@ -195,7 +200,8 @@ impl BlockchainClient {
             id: 1,
         };
 
-        match self.http_client
+        match self
+            .http_client
             .post(&self.config.endpoint)
             .json(&rpc_req)
             .send()
@@ -203,22 +209,26 @@ impl BlockchainClient {
         {
             Ok(resp) => {
                 if !resp.status().is_success() {
-                    return Err(BlockchainError::Http(format!(
-                        "HTTP {}", resp.status()
-                    )));
+                    return Err(BlockchainError::Http(format!("HTTP {}", resp.status())));
                 }
-                let rpc_resp: SubstrateRpcResponse = resp.json().await
+                let rpc_resp: SubstrateRpcResponse = resp
+                    .json()
+                    .await
                     .map_err(|e| BlockchainError::Http(format!("parse failed: {e}")))?;
 
                 if let Some(err) = rpc_resp.error {
                     return Err(BlockchainError::TransactionFailed(format!(
-                        "RPC error {}: {}", err.code, err.message
+                        "RPC error {}: {}",
+                        err.code, err.message
                     )));
                 }
 
-                let block_hash = rpc_resp.result
+                let block_hash = rpc_resp
+                    .result
                     .and_then(|v| v.as_str().map(|s| s.to_string()))
-                    .unwrap_or_else(|| crypto::hash_hex(&serde_json::to_vec(tx).unwrap_or_default()));
+                    .unwrap_or_else(|| {
+                        crypto::hash_hex(&serde_json::to_vec(tx).unwrap_or_default())
+                    });
 
                 Ok(TransactionReceipt {
                     tx_id: tx.tx_id.clone(),
@@ -243,24 +253,20 @@ impl BlockchainClient {
 
     pub fn drain_queue(&self) -> Vec<BlockchainTransaction> {
         let mut drained = Vec::new();
-        for item in self.db.iterator(rocksdb::IteratorMode::Start) {
-            if let Ok((k, v)) = item {
-                if let Ok(tx) = bincode::deserialize::<BlockchainTransaction>(&v) {
-                    drained.push(tx);
-                }
-                let _ = self.db.delete(&k);
+        for (k, v) in self.db.iterator(rocksdb::IteratorMode::Start).flatten() {
+            if let Ok(tx) = bincode::deserialize::<BlockchainTransaction>(&v) {
+                drained.push(tx);
             }
+            let _ = self.db.delete(&k);
         }
         drained
     }
 
     pub async fn retry_all_queued(&self) {
         let mut to_retry = Vec::new();
-        for item in self.db.iterator(rocksdb::IteratorMode::Start) {
-            if let Ok((k, v)) = item {
-                if let Ok(tx) = bincode::deserialize::<BlockchainTransaction>(&v) {
-                    to_retry.push((k, tx));
-                }
+        for (k, v) in self.db.iterator(rocksdb::IteratorMode::Start).flatten() {
+            if let Ok(tx) = bincode::deserialize::<BlockchainTransaction>(&v) {
+                to_retry.push((k, tx));
             }
         }
 
@@ -301,11 +307,9 @@ mod tests {
     fn test_create_transaction() {
         let client = BlockchainClient::new(test_config()).unwrap();
         let kp = KeyPair::generate().unwrap();
-        let tx = client.create_transaction(
-            "abc123hash".into(),
-            "BBL".into(),
-            &kp,
-        ).unwrap();
+        let tx = client
+            .create_transaction("abc123hash".into(), "BBL".into(), &kp)
+            .unwrap();
         assert_eq!(tx.bank_code, "BBL");
         assert_eq!(tx.identity_hash, "abc123hash");
         assert!(!tx.signature.is_empty());
@@ -316,7 +320,9 @@ mod tests {
         let config = test_config();
         let client = BlockchainClient::new(config).unwrap();
         let kp = KeyPair::generate().unwrap();
-        let tx = client.create_transaction("hash".into(), "SCB".into(), &kp).unwrap();
+        let tx = client
+            .create_transaction("hash".into(), "SCB".into(), &kp)
+            .unwrap();
         let receipt = client.submit(tx).await.unwrap();
         assert!(matches!(receipt.status, TxStatus::Queued));
         assert_eq!(client.queue_len(), 1);

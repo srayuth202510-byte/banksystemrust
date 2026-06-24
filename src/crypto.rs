@@ -1,26 +1,16 @@
+// ระบบนี้คือ High-Speed Blockchain Banking System สำหรับ NDID (National Digital ID)
+// ระบบพัฒนาขึ้นเพื่อรองรับการทำธุรกรรมธนาคารข้ามประเทศอย่างรวดเร็ว
 // ภาษา: Rust, รันไทม์: Tokio async, โปรโตคอล: QUIC + TCP/TLS 1.3 Auto-Fallback
 // ชั้นบริการ API: GraphQL (async-graphql) over Axum
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
-use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use aes_gcm::aead::Aead;
-use sha2::{Digest, Sha256};
+use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use thiserror::Error;
 use zeroize::Zeroize;
 
@@ -78,10 +68,14 @@ impl KeyPair {
 
     pub fn from_bytes(secret: &[u8], public: &[u8]) -> Result<Self, CryptoError> {
         let _signing = SigningKey::from_bytes(
-            secret.try_into().map_err(|_| CryptoError::InvalidKey("invalid secret key length".into()))?,
+            secret
+                .try_into()
+                .map_err(|_| CryptoError::InvalidKey("invalid secret key length".into()))?,
         );
         let _verifying = VerifyingKey::from_bytes(
-            public.try_into().map_err(|_| CryptoError::InvalidKey("invalid public key length".into()))?,
+            public
+                .try_into()
+                .map_err(|_| CryptoError::InvalidKey("invalid public key length".into()))?,
         );
         Ok(Self {
             public_key: public.to_vec(),
@@ -99,7 +93,10 @@ pub struct SignedPayload {
 
 pub fn sign(payload: &[u8], keypair: &KeyPair) -> Result<SignedPayload, CryptoError> {
     let signing_key = SigningKey::from_bytes(
-        keypair.secret_key.as_slice().try_into()
+        keypair
+            .secret_key
+            .as_slice()
+            .try_into()
             .map_err(|_| CryptoError::InvalidKey("invalid secret key".into()))?,
     );
     let signature = signing_key.sign(payload);
@@ -112,7 +109,10 @@ pub fn sign(payload: &[u8], keypair: &KeyPair) -> Result<SignedPayload, CryptoEr
 
 pub fn verify(signed: &SignedPayload) -> Result<bool, CryptoError> {
     let verifying_key = VerifyingKey::from_bytes(
-        signed.public_key.as_slice().try_into()
+        signed
+            .public_key
+            .as_slice()
+            .try_into()
             .map_err(|_| CryptoError::InvalidKey("invalid public key".into()))?,
     )?;
     let signature = Signature::from_slice(&signed.signature)
@@ -137,11 +137,12 @@ pub struct EncryptedPayload {
 }
 
 pub fn encrypt(plaintext: &[u8], key: &[u8; 32]) -> Result<EncryptedPayload, CryptoError> {
-    let cipher = Aes256Gcm::new_from_slice(key)
-        .map_err(|e| CryptoError::EncryptionFailed(e.to_string()))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(key).map_err(|e| CryptoError::EncryptionFailed(e.to_string()))?;
     let nonce_bytes: [u8; 12] = rand::random();
     let nonce = Nonce::from_slice(&nonce_bytes);
-    let ciphertext = cipher.encrypt(nonce, plaintext)
+    let ciphertext = cipher
+        .encrypt(nonce, plaintext)
         .map_err(|e| CryptoError::EncryptionFailed(e.to_string()))?;
     Ok(EncryptedPayload {
         ciphertext,
@@ -150,10 +151,11 @@ pub fn encrypt(plaintext: &[u8], key: &[u8; 32]) -> Result<EncryptedPayload, Cry
 }
 
 pub fn decrypt(encrypted: &EncryptedPayload, key: &[u8; 32]) -> Result<Vec<u8>, CryptoError> {
-    let cipher = Aes256Gcm::new_from_slice(key)
-        .map_err(|e| CryptoError::DecryptionFailed(e.to_string()))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(key).map_err(|e| CryptoError::DecryptionFailed(e.to_string()))?;
     let nonce = Nonce::from_slice(&encrypted.nonce);
-    cipher.decrypt(nonce, encrypted.ciphertext.as_ref())
+    cipher
+        .decrypt(nonce, encrypted.ciphertext.as_ref())
         .map_err(|e| CryptoError::DecryptionFailed(e.to_string()))
 }
 

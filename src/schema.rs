@@ -1,16 +1,6 @@
+// ระบบนี้คือ High-Speed Blockchain Banking System สำหรับ NDID (National Digital ID)
+// ระบบพัฒนาขึ้นเพื่อรองรับการทำธุรกรรมธนาคารข้ามประเทศอย่างรวดเร็ว
 // ภาษา: Rust, รันไทม์: Tokio async, โปรโตคอล: QUIC + TCP/TLS 1.3 Auto-Fallback
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
 // ชั้นบริการ API: GraphQL (async-graphql) over Axum
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
@@ -41,11 +31,7 @@ pub struct QueryRoot;
 
 #[Object]
 impl QueryRoot {
-    async fn verify_ndid_record(
-        &self,
-        ctx: &Context<'_>,
-        request_id: String,
-    ) -> IdentityStatusGql {
+    async fn verify_ndid_record(&self, ctx: &Context<'_>, request_id: String) -> IdentityStatusGql {
         let p2p_node = ctx.data_unchecked::<P2pNode>();
         let target_addr = "10.0.1.50:4433";
         let (_channel, protocol) = network::connect_with_fallback(target_addr, &p2p_node.tls).await;

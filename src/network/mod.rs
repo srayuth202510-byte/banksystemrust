@@ -1,16 +1,6 @@
+// ระบบนี้คือ High-Speed Blockchain Banking System สำหรับ NDID (National Digital ID)
+// ระบบพัฒนาขึ้นเพื่อรองรับการทำธุรกรรมธนาคารข้ามประเทศอย่างรวดเร็ว
 // ภาษา: Rust, รันไทม์: Tokio async, โปรโตคอล: QUIC + TCP/TLS 1.3 Auto-Fallback
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
 // ชั้นบริการ API: GraphQL (async-graphql) over Axum
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
@@ -20,7 +10,7 @@ pub mod tcp_channel;
 pub mod tls;
 
 use thiserror::Error;
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 use tracing::{info, warn};
 
 use self::tls::TlsContext;
@@ -58,7 +48,7 @@ impl std::fmt::Display for Protocol {
 
 pub enum ConnectionStream {
     Quic(quinn::Connection),
-    TcpTls(tokio_rustls::client::TlsStream<tokio::net::TcpStream>),
+    TcpTls(Box<tokio_rustls::client::TlsStream<tokio::net::TcpStream>>),
 }
 
 impl std::fmt::Debug for ConnectionStream {

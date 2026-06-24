@@ -1,16 +1,6 @@
+// ระบบนี้คือ High-Speed Blockchain Banking System สำหรับ NDID (National Digital ID)
+// ระบบพัฒนาขึ้นเพื่อรองรับการทำธุรกรรมธนาคารข้ามประเทศอย่างรวดเร็ว
 // ภาษา: Rust, รันไทม์: Tokio async, โปรโตคอล: QUIC + TCP/TLS 1.3 Auto-Fallback
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
 // ชั้นบริการ API: GraphQL (async-graphql) over Axum
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
@@ -119,7 +109,10 @@ mod tests {
     #[tokio::test]
     async fn test_send_kyc_fallback() {
         let node = test_node("SCB");
-        let proto = node.send_kyc("127.0.0.1:19999", "hash123".into()).await.unwrap();
+        let proto = node
+            .send_kyc("127.0.0.1:19999", "hash123".into())
+            .await
+            .unwrap();
         assert_eq!(proto, Protocol::Tcp);
     }
 }

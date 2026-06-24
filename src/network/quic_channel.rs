@@ -1,29 +1,23 @@
+// ระบบนี้คือ High-Speed Blockchain Banking System สำหรับ NDID (National Digital ID)
+// ระบบพัฒนาขึ้นเพื่อรองรับการทำธุรกรรมธนาคารข้ามประเทศอย่างรวดเร็ว
 // ภาษา: Rust, รันไทม์: Tokio async, โปรโตคอล: QUIC + TCP/TLS 1.3 Auto-Fallback
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
 // ชั้นบริการ API: GraphQL (async-graphql) over Axum
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
 use std::net::SocketAddr;
 
-use tracing::{info, warn};
 use crate::network::{NetworkChannel, NetworkError, Protocol};
+use tracing::{info, warn};
 
-pub async fn connect_quic(addr: &str, config: &quinn::ClientConfig) -> Result<NetworkChannel, NetworkError> {
+pub async fn connect_quic(
+    addr: &str,
+    config: &quinn::ClientConfig,
+) -> Result<NetworkChannel, NetworkError> {
     info!(addr = %addr, "Attempting QUIC connection");
 
-    let server_addr: SocketAddr = addr.parse()
+    let server_addr: SocketAddr = addr
+        .parse()
         .map_err(|e| NetworkError::QuicFailed(format!("invalid address {addr}: {e}")))?;
 
     let local_addr: SocketAddr = if server_addr.is_ipv4() {
@@ -37,13 +31,12 @@ pub async fn connect_quic(addr: &str, config: &quinn::ClientConfig) -> Result<Ne
 
     let server_name = "localhost";
 
-    let connecting = endpoint.connect_with(
-        config.clone(),
-        server_addr,
-        server_name,
-    ).map_err(|e| NetworkError::QuicFailed(format!("connect failed: {e}")))?;
+    let connecting = endpoint
+        .connect_with(config.clone(), server_addr, server_name)
+        .map_err(|e| NetworkError::QuicFailed(format!("connect failed: {e}")))?;
 
-    let connection = connecting.await
+    let connection = connecting
+        .await
         .map_err(|e| NetworkError::QuicFailed(format!("handshake failed: {e}")))?;
 
     info!(addr = %addr, "QUIC handshake complete");
@@ -58,7 +51,8 @@ pub async fn start_quic_server(
     bind_addr: &str,
     config: quinn::ServerConfig,
 ) -> Result<quinn::Endpoint, NetworkError> {
-    let addr: SocketAddr = bind_addr.parse()
+    let addr: SocketAddr = bind_addr
+        .parse()
         .map_err(|e| NetworkError::QuicFailed(format!("invalid bind address {bind_addr}: {e}")))?;
 
     let endpoint = quinn::Endpoint::server(config, addr)

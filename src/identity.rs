@@ -1,23 +1,12 @@
+// ระบบนี้คือ High-Speed Blockchain Banking System สำหรับ NDID (National Digital ID)
+// ระบบพัฒนาขึ้นเพื่อรองรับการทำธุรกรรมธนาคารข้ามประเทศอย่างรวดเร็ว
 // ภาษา: Rust, รันไทม์: Tokio async, โปรโตคอล: QUIC + TCP/TLS 1.3 Auto-Fallback
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
 // ชั้นบริการ API: GraphQL (async-graphql) over Axum
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-
 
 use crate::crypto;
 
@@ -88,7 +77,10 @@ pub struct AnonymizedKyc {
 pub fn validate_identity_hash(kyc: &KycData, expected_hash: &str) -> Result<bool, IdentityError> {
     let actual_hash = kyc.compute_hash();
     use subtle::ConstantTimeEq;
-    Ok(actual_hash.as_bytes().ct_eq(expected_hash.as_bytes()).into())
+    Ok(actual_hash
+        .as_bytes()
+        .ct_eq(expected_hash.as_bytes())
+        .into())
 }
 
 pub fn create_identity_record(
@@ -141,12 +133,7 @@ mod tests {
     #[test]
     fn test_create_identity_record() {
         let kyc = sample_kyc();
-        let record = create_identity_record(
-            "req-001".into(),
-            &kyc,
-            "BBL".into(),
-            "QUIC".into(),
-        );
+        let record = create_identity_record("req-001".into(), &kyc, "BBL".into(), "QUIC".into());
         assert!(matches!(record.status, IdentityStatus::Pending));
         assert_eq!(record.identity_hash.len(), 64);
     }

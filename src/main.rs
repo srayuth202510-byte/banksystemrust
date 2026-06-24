@@ -1,16 +1,6 @@
+// ระบบนี้คือ High-Speed Blockchain Banking System สำหรับ NDID (National Digital ID)
+// ระบบพัฒนาขึ้นเพื่อรองรับการทำธุรกรรมธนาคารข้ามประเทศอย่างรวดเร็ว
 // ภาษา: Rust, รันไทม์: Tokio async, โปรโตคอล: QUIC + TCP/TLS 1.3 Auto-Fallback
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
 // ชั้นบริการ API: GraphQL (async-graphql) over Axum
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
@@ -18,19 +8,19 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use async_graphql::{http::GraphiQLSource, EmptySubscription};
+use async_graphql::{EmptySubscription, http::GraphiQLSource};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{
+    Router,
     error_handling::HandleErrorLayer,
     extract::State,
     http::StatusCode,
     response::{Html, IntoResponse},
     routing::get,
-    Router,
 };
 use clap::Parser;
-use tower::{buffer::BufferLayer, limit::RateLimitLayer, BoxError, ServiceBuilder};
 use tokio::net::TcpListener;
+use tower::{BoxError, ServiceBuilder, buffer::BufferLayer, limit::RateLimitLayer};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
@@ -123,11 +113,10 @@ async fn start_quic_server(config: &AppConfig, tls: &TlsContext) {
 async fn main() {
     let cli = Cli::parse();
 
-    let config = AppConfig::load(Some(PathBuf::from(&cli.config)))
-        .unwrap_or_else(|e| {
-            eprintln!("Failed to load config: {e}");
-            std::process::exit(1);
-        });
+    let config = AppConfig::load(Some(PathBuf::from(&cli.config))).unwrap_or_else(|e| {
+        eprintln!("Failed to load config: {e}");
+        std::process::exit(1);
+    });
 
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -166,9 +155,9 @@ async fn main() {
         BlockchainClient::new(config.blockchain.clone()).unwrap_or_else(|e| {
             error!(error = %e, "Failed to initialize blockchain client");
             std::process::exit(1);
-        })
+        }),
     );
-    
+
     // Background Retry Worker for Substrate node
     let worker_client = blockchain_client.clone();
     tokio::spawn(async move {
@@ -194,7 +183,9 @@ async fn main() {
     let tcp_tls = tls.clone();
     tokio::spawn(async move {
         let addr = format!("0.0.0.0:{}", tcp_config.network.tcp_port);
-        if let Err(e) = banksystemrust::network::tcp_channel::start_tcp_server(&addr, &tcp_tls).await {
+        if let Err(e) =
+            banksystemrust::network::tcp_channel::start_tcp_server(&addr, &tcp_tls).await
+        {
             error!(error = %e, "TCP server failed");
         }
     });

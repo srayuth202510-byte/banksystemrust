@@ -1,23 +1,13 @@
+// ระบบนี้คือ High-Speed Blockchain Banking System สำหรับ NDID (National Digital ID)
+// ระบบพัฒนาขึ้นเพื่อรองรับการทำธุรกรรมธนาคารข้ามประเทศอย่างรวดเร็ว
 // ภาษา: Rust, รันไทม์: Tokio async, โปรโตคอล: QUIC + TCP/TLS 1.3 Auto-Fallback
 // ชั้นบริการ API: GraphQL (async-graphql) over Axum
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-// ชั้นบริการ API: GraphQL (async-graphql) over Axum
-// บล็อกเชน: Substrate (Private Permissioned Ledger)
-// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
-
-use std::sync::Arc;
-use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer, ServerName, UnixTime};
 use rustls::SignatureScheme;
+use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer, ServerName, UnixTime};
+use std::sync::Arc;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -57,21 +47,18 @@ impl std::fmt::Debug for TlsContext {
 
 impl TlsContext {
     pub fn generate_self_signed() -> Result<Self, TlsError> {
-        let key_pair = rcgen::KeyPair::generate()
+        let key_pair =
+            rcgen::KeyPair::generate().map_err(|e| TlsError::CertGeneration(e.to_string()))?;
+        let params = rcgen::CertificateParams::new(vec!["localhost".into(), "ndid.local".into()])
             .map_err(|e| TlsError::CertGeneration(e.to_string()))?;
-        let params = rcgen::CertificateParams::new(
-            vec!["localhost".into(), "ndid.local".into()]
-        )
-        .map_err(|e| TlsError::CertGeneration(e.to_string()))?;
-        let cert = params.self_signed(&key_pair)
+        let cert = params
+            .self_signed(&key_pair)
             .map_err(|e| TlsError::CertGeneration(e.to_string()))?;
 
         let cert_der = CertificateDer::from(cert.der().to_vec());
         Ok(Self {
             certs: vec![cert_der.clone()],
-            key: PrivateKeyDer::Pkcs8(
-                PrivatePkcs8KeyDer::from(key_pair.serialize_der())
-            ),
+            key: PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(key_pair.serialize_der())),
             ca_certs: vec![cert_der],
         })
     }
@@ -98,19 +85,20 @@ impl TlsContext {
         } else {
             let mut roots = rustls::RootCertStore::empty();
             for ca in &self.ca_certs {
-                roots.add(ca.clone())
+                roots
+                    .add(ca.clone())
                     .map_err(|e| TlsError::CertLoading(e.to_string()))?;
             }
             rustls::server::WebPkiClientVerifier::builder_with_provider(
                 Arc::new(roots),
                 rustls::crypto::ring::default_provider().into(),
             )
-                .build()
-                .map_err(|e| TlsError::CertLoading(e.to_string()))?
+            .build()
+            .map_err(|e| TlsError::CertLoading(e.to_string()))?
         };
 
         let crypto = rustls::ServerConfig::builder_with_provider(
-            rustls::crypto::ring::default_provider().into()
+            rustls::crypto::ring::default_provider().into(),
         )
         .with_protocol_versions(&[&rustls::version::TLS13])
         .map_err(|e| TlsError::CertLoading(e.to_string()))?
@@ -127,7 +115,10 @@ impl TlsContext {
         Ok(config)
     }
 
-    pub fn to_quic_client_config(&self, skip_verify: bool) -> Result<quinn::ClientConfig, TlsError> {
+    pub fn to_quic_client_config(
+        &self,
+        skip_verify: bool,
+    ) -> Result<quinn::ClientConfig, TlsError> {
         let provider = rustls::crypto::ring::default_provider();
 
         let crypto: rustls::ClientConfig = if skip_verify {
@@ -140,7 +131,8 @@ impl TlsContext {
         } else {
             let mut roots = rustls::RootCertStore::empty();
             for ca in &self.ca_certs {
-                roots.add(ca.clone())
+                roots
+                    .add(ca.clone())
                     .map_err(|e| TlsError::CertLoading(e.to_string()))?;
             }
             rustls::ClientConfig::builder_with_provider(provider.into())
@@ -165,25 +157,24 @@ impl TlsContext {
         } else {
             let mut roots = rustls::RootCertStore::empty();
             for ca in &self.ca_certs {
-                roots.add(ca.clone())
+                roots
+                    .add(ca.clone())
                     .map_err(|e| TlsError::CertLoading(e.to_string()))?;
             }
             rustls::server::WebPkiClientVerifier::builder_with_provider(
                 Arc::new(roots),
                 rustls::crypto::ring::default_provider().into(),
             )
-                .build()
-                .map_err(|e| TlsError::CertLoading(e.to_string()))?
+            .build()
+            .map_err(|e| TlsError::CertLoading(e.to_string()))?
         };
 
-        rustls::ServerConfig::builder_with_provider(
-            rustls::crypto::ring::default_provider().into()
-        )
-        .with_protocol_versions(&[&rustls::version::TLS13])
-        .map_err(|e| TlsError::CertLoading(e.to_string()))?
-        .with_client_cert_verifier(verifier)
-        .with_single_cert(self.certs.clone(), self.key.clone_key())
-        .map_err(|e| TlsError::CertLoading(e.to_string()))
+        rustls::ServerConfig::builder_with_provider(rustls::crypto::ring::default_provider().into())
+            .with_protocol_versions(&[&rustls::version::TLS13])
+            .map_err(|e| TlsError::CertLoading(e.to_string()))?
+            .with_client_cert_verifier(verifier)
+            .with_single_cert(self.certs.clone(), self.key.clone_key())
+            .map_err(|e| TlsError::CertLoading(e.to_string()))
     }
 }
 
