@@ -1,3 +1,20 @@
+// ภาษา: Rust, รันไทม์: Tokio async, โปรโตคอล: QUIC + TCP/TLS 1.3 Auto-Fallback
+// ชั้นบริการ API: GraphQL (async-graphql) over Axum
+// บล็อกเชน: Substrate (Private Permissioned Ledger)
+// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
+
+// ชั้นบริการ API: GraphQL (async-graphql) over Axum
+// บล็อกเชน: Substrate (Private Permissioned Ledger)
+// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
+
+// ชั้นบริการ API: GraphQL (async-graphql) over Axum
+// บล็อกเชน: Substrate (Private Permissioned Ledger)
+// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
+
+// ชั้นบริการ API: GraphQL (async-graphql) over Axum
+// บล็อกเชน: Substrate (Private Permissioned Ledger)
+// คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
+
 pub mod quic_channel;
 pub mod tcp_channel;
 pub mod tls;
