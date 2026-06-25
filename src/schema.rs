@@ -31,7 +31,11 @@ pub struct QueryRoot;
 
 #[Object]
 impl QueryRoot {
-    async fn verify_ndid_record(&self, ctx: &Context<'_>, request_id: String) -> async_graphql::Result<IdentityStatusGql> {
+    async fn verify_ndid_record(
+        &self,
+        ctx: &Context<'_>,
+        request_id: String,
+    ) -> async_graphql::Result<IdentityStatusGql> {
         let redis_cache = ctx.data::<std::sync::Arc<RedisCache>>()?;
         let blockchain_client =
             ctx.data::<std::sync::Arc<crate::blockchain::BlockchainClient>>()?;

@@ -151,8 +151,9 @@ async fn test_graphql_flow() {
     };
     let blockchain_client =
         std::sync::Arc::new(banksystemrust::blockchain::BlockchainClient::new(config).unwrap());
-    let redis_cache =
-        std::sync::Arc::new(RedisCache::new(banksystemrust::config::RedisConfig::default()).unwrap());
+    let redis_cache = std::sync::Arc::new(
+        RedisCache::new(banksystemrust::config::RedisConfig::default()).unwrap(),
+    );
 
     let schema = async_graphql::Schema::build(
         banksystemrust::schema::QueryRoot,

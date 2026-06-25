@@ -123,12 +123,14 @@ impl RedisCache {
 
         let key = format!("ndid:ratelimit:{ip}");
         self.with_timeout(async {
-            let mut conn = client
-                .get_multiplexed_async_connection()
-                .await?;
+            let mut conn = client.get_multiplexed_async_connection().await?;
             let count: u64 = redis::cmd("INCR").arg(&key).query_async(&mut conn).await?;
             if count == 1 {
-                let _: () = redis::cmd("EXPIRE").arg(&key).arg(1).query_async(&mut conn).await?;
+                let _: () = redis::cmd("EXPIRE")
+                    .arg(&key)
+                    .arg(1)
+                    .query_async(&mut conn)
+                    .await?;
             }
             Ok(count <= limit)
         })

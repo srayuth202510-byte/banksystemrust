@@ -1,5 +1,5 @@
-use banksystemrust::crypto::{KeyPair, encrypt, decrypt, hash_hex, sign, verify};
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use banksystemrust::crypto::{KeyPair, decrypt, encrypt, hash_hex, sign, verify};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use rand::RngCore;
 
 fn bench_ed25519(c: &mut Criterion) {
@@ -12,9 +12,7 @@ fn bench_ed25519(c: &mut Criterion) {
     });
 
     let signed = sign(payload, &keypair).unwrap();
-    group.bench_function("verify", |b| {
-        b.iter(|| verify(black_box(&signed)).unwrap())
-    });
+    group.bench_function("verify", |b| b.iter(|| verify(black_box(&signed)).unwrap()));
     group.finish();
 }
 
@@ -39,9 +37,7 @@ fn bench_sha256(c: &mut Criterion) {
     let mut group = c.benchmark_group("SHA-256");
     let data = b"{\"national_id\":\"1234567890123\",\"full_name\":\"John Doe\",\"date_of_birth\":\"1990-01-01\",\"bank_code\":\"BBL\",\"timestamp\":1718000000}";
 
-    group.bench_function("hash_kyc_data", |b| {
-        b.iter(|| hash_hex(black_box(data)))
-    });
+    group.bench_function("hash_kyc_data", |b| b.iter(|| hash_hex(black_box(data))));
     group.finish();
 }
 

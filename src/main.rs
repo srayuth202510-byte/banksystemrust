@@ -12,17 +12,17 @@ use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{
     Router,
     error_handling::HandleErrorLayer,
-    extract::{State, ConnectInfo, Request, Extension},
+    extract::{ConnectInfo, Extension, Request, State},
     http::StatusCode,
+    middleware::{self, Next},
     response::{Html, IntoResponse, Response},
     routing::get,
-    middleware::{self, Next},
 };
 use clap::Parser;
 use opentelemetry_sdk::trace::TracerProvider;
 use opentelemetry_stdout::SpanExporter;
 use tokio::net::TcpListener;
-use tokio::sync::{broadcast, Mutex as TokioMutex};
+use tokio::sync::{Mutex as TokioMutex, broadcast};
 use tower::{BoxError, ServiceBuilder, buffer::BufferLayer};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
@@ -62,7 +62,11 @@ async fn per_ip_rate_limiter(
     next: Next,
 ) -> Result<Response, StatusCode> {
     let ip = addr.ip();
-    let allowed = match state.redis.check_rate_limit(&ip.to_string(), state.limit).await {
+    let allowed = match state
+        .redis
+        .check_rate_limit(&ip.to_string(), state.limit)
+        .await
+    {
         Ok(true) => true,
         Ok(false) => false,
         Err(e) => {
@@ -77,7 +81,7 @@ async fn per_ip_rate_limiter(
     if !allowed {
         return Err(StatusCode::TOO_MANY_REQUESTS);
     }
-    
+
     Ok(next.run(req).await)
 }
 
@@ -282,12 +286,11 @@ async fn main() {
             std::process::exit(1);
         }),
     );
-    let redis_cache = std::sync::Arc::new(RedisCache::new(config.redis.clone()).unwrap_or_else(
-        |e| {
+    let redis_cache =
+        std::sync::Arc::new(RedisCache::new(config.redis.clone()).unwrap_or_else(|e| {
             error!(error = %e, "Failed to initialize Redis cache");
             std::process::exit(1);
-        },
-    ));
+        }));
 
     // Background Retry Worker for Substrate node
     let worker_client = blockchain_client.clone();
@@ -360,13 +363,16 @@ async fn main() {
         std::process::exit(1);
     });
 
-    axum::serve(listener, app.into_make_service_with_connect_info::<std::net::SocketAddr>())
-        .with_graceful_shutdown(shutdown_future)
-        .await
-        .unwrap_or_else(|e| {
-            error!(error = %e, "Server error");
-            std::process::exit(1);
-        });
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_future)
+    .await
+    .unwrap_or_else(|e| {
+        error!(error = %e, "Server error");
+        std::process::exit(1);
+    });
 
     if let Err(e) = tracer_provider.shutdown() {
         error!(error = %e, "Failed to shutdown tracer provider");

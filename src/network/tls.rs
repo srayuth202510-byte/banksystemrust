@@ -48,8 +48,12 @@ impl TlsContext {
     pub fn generate_self_signed() -> Result<Self, TlsError> {
         let key_pair =
             rcgen::KeyPair::generate().map_err(|e| TlsError::CertGeneration(e.to_string()))?;
-        let params = rcgen::CertificateParams::new(vec!["localhost".into(), "ndid.local".into(), "127.0.0.1".into()])
-            .map_err(|e| TlsError::CertGeneration(e.to_string()))?;
+        let params = rcgen::CertificateParams::new(vec![
+            "localhost".into(),
+            "ndid.local".into(),
+            "127.0.0.1".into(),
+        ])
+        .map_err(|e| TlsError::CertGeneration(e.to_string()))?;
         let cert = params
             .self_signed(&key_pair)
             .map_err(|e| TlsError::CertGeneration(e.to_string()))?;
@@ -199,8 +203,6 @@ fn load_key(path: &str) -> Result<PrivateKeyDer<'static>, TlsError> {
         .map_err(|e| TlsError::CertLoading(e.to_string()))?
         .ok_or_else(|| TlsError::CertLoading("no private key found".into()))
 }
-
-
 
 #[cfg(test)]
 mod tests {
