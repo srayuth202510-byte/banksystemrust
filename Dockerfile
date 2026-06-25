@@ -7,6 +7,7 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock* ./
 COPY src src
 COPY config config
+COPY benches benches
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
