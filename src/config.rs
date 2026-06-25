@@ -7,6 +7,15 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum AppConfigError {
+    #[error("{0}")]
+    Message(String),
+    #[error("config error: {0}")]
+    Config(#[from] config::ConfigError),
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RateLimitConfig {
@@ -25,17 +34,12 @@ impl Default for RateLimitConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum LoadBalancerStrategy {
+    #[default]
     RoundRobin,
     Fanout,
-}
-
-impl Default for LoadBalancerStrategy {
-    fn default() -> Self {
-        Self::RoundRobin
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

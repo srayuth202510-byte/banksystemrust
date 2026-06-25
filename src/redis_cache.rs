@@ -137,15 +137,16 @@ fn build_client_url(config: &RedisConfig) -> Result<String, RedisCacheError> {
         return Ok(config.url.clone());
     };
 
-    let password = std::fs::read_to_string(password_file)
-        .map_err(|e| RedisCacheError::SecretLoad(format!("cannot read {}: {e}", password_file.display())))?;
+    let password = std::fs::read_to_string(password_file).map_err(|e| {
+        RedisCacheError::SecretLoad(format!("cannot read {}: {e}", password_file.display()))
+    })?;
     let password = password.trim_end().to_owned();
     if password.is_empty() {
         return Err(RedisCacheError::SecretLoad(
             "redis password file cannot be empty".into(),
         ));
     }
-    let password = SecretString::new(password);
+    let password = SecretString::new(password.into());
     let username = config.username.as_deref().unwrap_or("default").trim();
     if username.is_empty() {
         return Err(RedisCacheError::SecretLoad(
@@ -192,13 +193,9 @@ fn percent_encode_userinfo(value: &str) -> String {
     let mut encoded = String::with_capacity(value.len());
     for &byte in value.as_bytes() {
         match byte {
-            b'A'..=b'Z'
-            | b'a'..=b'z'
-            | b'0'..=b'9'
-            | b'-'
-            | b'.'
-            | b'_'
-            | b'~' => encoded.push(byte as char),
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                encoded.push(byte as char)
+            }
             _ => {
                 use std::fmt::Write as _;
                 let _ = write!(encoded, "%{:02X}", byte);
