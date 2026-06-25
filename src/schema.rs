@@ -31,17 +31,17 @@ pub struct QueryRoot;
 
 #[Object]
 impl QueryRoot {
-    async fn verify_ndid_record(&self, ctx: &Context<'_>, request_id: String) -> IdentityStatusGql {
-        let redis_cache = ctx.data_unchecked::<std::sync::Arc<RedisCache>>();
+    async fn verify_ndid_record(&self, ctx: &Context<'_>, request_id: String) -> async_graphql::Result<IdentityStatusGql> {
+        let redis_cache = ctx.data::<std::sync::Arc<RedisCache>>()?;
         let blockchain_client =
-            ctx.data_unchecked::<std::sync::Arc<crate::blockchain::BlockchainClient>>();
+            ctx.data::<std::sync::Arc<crate::blockchain::BlockchainClient>>()?;
 
         if let Ok(Some(cached)) = redis_cache.get_transaction_status(&request_id).await {
-            return IdentityStatusGql {
+            return Ok(IdentityStatusGql {
                 request_id,
                 status: verify_status_label(&cached.status),
                 active_protocol: cached.active_protocol,
-            };
+            });
         }
 
         let (tx_status, proto) = match blockchain_client.get_transaction_status(&request_id) {
@@ -72,28 +72,28 @@ impl QueryRoot {
             })
             .await;
 
-        IdentityStatusGql {
+        Ok(IdentityStatusGql {
             request_id,
             status,
             active_protocol: proto,
-        }
+        })
     }
 
     async fn get_identity(
         &self,
         ctx: &Context<'_>,
         request_id: String,
-    ) -> Option<IdentityStatusGql> {
-        let redis_cache = ctx.data_unchecked::<std::sync::Arc<RedisCache>>();
+    ) -> async_graphql::Result<Option<IdentityStatusGql>> {
+        let redis_cache = ctx.data::<std::sync::Arc<RedisCache>>()?;
         let blockchain_client =
-            ctx.data_unchecked::<std::sync::Arc<crate::blockchain::BlockchainClient>>();
+            ctx.data::<std::sync::Arc<crate::blockchain::BlockchainClient>>()?;
 
         if let Ok(Some(cached)) = redis_cache.get_transaction_status(&request_id).await {
-            return Some(IdentityStatusGql {
+            return Ok(Some(IdentityStatusGql {
                 request_id,
                 status: get_identity_status_label(&cached.status),
                 active_protocol: cached.active_protocol,
-            });
+            }));
         }
 
         match blockchain_client.get_transaction_status(&request_id) {
@@ -106,13 +106,13 @@ impl QueryRoot {
                         active_protocol: "TCP/TLS".to_string(),
                     })
                     .await;
-                Some(IdentityStatusGql {
+                Ok(Some(IdentityStatusGql {
                     request_id,
                     status: status_str,
                     active_protocol: "TCP/TLS".to_string(),
-                })
+                }))
             }
-            Err(_) => None,
+            Err(_) => Ok(None),
         }
     }
 }
@@ -127,11 +127,11 @@ impl MutationRoot {
         national_id: String,
         full_name: String,
         bank_code: String,
-    ) -> KycResponse {
-        let p2p_node = ctx.data_unchecked::<P2pNode>();
-        let redis_cache = ctx.data_unchecked::<std::sync::Arc<RedisCache>>();
+    ) -> async_graphql::Result<KycResponse> {
+        let p2p_node = ctx.data::<P2pNode>()?;
+        let redis_cache = ctx.data::<std::sync::Arc<RedisCache>>()?;
         let blockchain_client =
-            ctx.data_unchecked::<std::sync::Arc<crate::blockchain::BlockchainClient>>();
+            ctx.data::<std::sync::Arc<crate::blockchain::BlockchainClient>>()?;
 
         let kyc = identity::KycData {
             national_id,
@@ -146,12 +146,12 @@ impl MutationRoot {
                 crate::metrics::kyc_requests()
                     .with_label_values(&[&bank_code, "Failed"])
                     .inc();
-                return KycResponse {
+                return Ok(KycResponse {
                     request_id: String::new(),
                     identity_hash: String::new(),
                     bank_code,
                     message: format!("Failed to compute identity hash: {}", e),
-                };
+                });
             }
         };
         info!(hash = %identity_hash, "KYC submitted");
@@ -166,12 +166,12 @@ impl MutationRoot {
                 crate::metrics::kyc_requests()
                     .with_label_values(&[&bank_code, "Failed"])
                     .inc();
-                return KycResponse {
+                return Ok(KycResponse {
                     request_id: String::new(),
                     identity_hash,
                     bank_code,
                     message: format!("Failed to create blockchain tx: {}", e),
-                };
+                });
             }
         };
 
@@ -183,12 +183,12 @@ impl MutationRoot {
                 crate::metrics::kyc_requests()
                     .with_label_values(&[&bank_code, "Failed"])
                     .inc();
-                return KycResponse {
+                return Ok(KycResponse {
                     request_id: tx_id,
                     identity_hash,
                     bank_code,
                     message: format!("Failed to submit transaction: {}", e),
-                };
+                });
             }
         };
 
@@ -228,7 +228,7 @@ impl MutationRoot {
             })
             .await;
 
-        KycResponse {
+        Ok(KycResponse {
             request_id: tx_id,
             identity_hash,
             bank_code,
@@ -236,7 +236,7 @@ impl MutationRoot {
                 "KYC submitted successfully (Status: {}){}",
                 status_str, p2p_summary
             ),
-        }
+        })
     }
 }
 
@@ -255,5 +255,20 @@ fn verify_status_label(status: &crate::blockchain::TxStatus) -> String {
         crate::blockchain::TxStatus::Queued => "Queued".to_string(),
         crate::blockchain::TxStatus::Pending => "Pending".to_string(),
         crate::blockchain::TxStatus::Failed => "Rejected".to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_graphql::{EmptySubscription, Schema};
+
+    #[test]
+    fn test_schema_builds_successfully() {
+        let schema = Schema::build(QueryRoot, MutationRoot, EmptySubscription).finish();
+        let sdl = schema.sdl();
+        assert!(sdl.contains("type QueryRoot"));
+        assert!(sdl.contains("type MutationRoot"));
+        assert!(sdl.contains("submitKyc"));
     }
 }

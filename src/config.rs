@@ -48,6 +48,10 @@ pub struct LoadBalancerConfig {
     pub strategy: LoadBalancerStrategy,
 }
 
+fn default_tcp_timeout() -> u64 {
+    2000
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
     pub host: String,
@@ -63,6 +67,8 @@ pub struct NetworkConfig {
     pub quic_port: u16,
     pub tcp_port: u16,
     pub quic_timeout_ms: u64,
+    #[serde(default = "default_tcp_timeout")]
+    pub tcp_timeout_ms: u64,
     pub fallback_enabled: bool,
     pub peers: Vec<String>,
     #[serde(default)]
@@ -92,7 +98,7 @@ pub struct CryptoConfig {
     #[serde(default)]
     pub hsm_slot: Option<u32>,
     #[serde(default)]
-    pub hsm_pin: String,
+    pub hsm_pin_file: Option<PathBuf>,
     pub signing_algorithm: String,
     pub encryption_algorithm: String,
 }
@@ -167,6 +173,7 @@ impl Default for AppConfig {
                 quic_port: 4433,
                 tcp_port: 8443,
                 quic_timeout_ms: 500,
+                tcp_timeout_ms: 2000,
                 fallback_enabled: true,
                 peers: Vec::new(),
                 load_balancer: LoadBalancerConfig::default(),
@@ -184,7 +191,7 @@ impl Default for AppConfig {
                 hsm_enabled: false,
                 hsm_library_path: None,
                 hsm_slot: None,
-                hsm_pin: String::new(),
+                hsm_pin_file: None,
                 signing_algorithm: "ED25519".into(),
                 encryption_algorithm: "AES-256-GCM".into(),
             },
@@ -248,8 +255,8 @@ impl AppConfig {
                     "crypto.hsm_library_path must be specified when hsm_enabled is true".into(),
                 );
             }
-            if self.crypto.hsm_pin.trim().is_empty() {
-                return Err("crypto.hsm_pin cannot be empty when hsm_enabled is true".into());
+            if self.crypto.hsm_pin_file.is_none() {
+                return Err("crypto.hsm_pin_file is required when hsm_enabled is true".into());
             }
         }
         if self.redis.enabled {
@@ -362,7 +369,7 @@ mod tests {
         assert!(config.validate().is_err());
 
         config.crypto.hsm_library_path = Some("/path/to/lib".into());
-        config.crypto.hsm_pin = "1234".into();
+        config.crypto.hsm_pin_file = Some(PathBuf::from("/etc/secrets/pin.txt"));
         assert!(config.validate().is_ok());
     }
 

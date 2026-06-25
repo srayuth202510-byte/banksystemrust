@@ -82,7 +82,7 @@ pub trait ConnectionChannel: Send + Sync {
 #[async_trait::async_trait]
 impl ConnectionChannel for NetworkChannel {
     async fn connect(&self, addr: &str, tls: &TlsContext) -> Result<NetworkChannel, NetworkError> {
-        let (channel, _) = connect_with_fallback(addr, tls).await;
+        let (channel, _) = connect_with_fallback(addr, tls, 500, 2000).await;
         if channel.stream.is_some() {
             Ok(channel)
         } else {
@@ -219,13 +219,18 @@ pub fn process_p2p_message(buf: &[u8]) -> String {
     }
 }
 
-pub async fn connect_with_fallback(addr: &str, tls: &TlsContext) -> (NetworkChannel, Protocol) {
-    let quic_timeout = Duration::from_millis(500);
-    let quic_config = match tls.to_quic_client_config(false) {
+pub async fn connect_with_fallback(
+    addr: &str,
+    tls: &TlsContext,
+    quic_timeout_ms: u64,
+    tcp_timeout_ms: u64,
+) -> (NetworkChannel, Protocol) {
+    let quic_timeout = Duration::from_millis(quic_timeout_ms);
+    let quic_config = match tls.to_quic_client_config() {
         Ok(c) => c,
         Err(e) => {
             warn!(error = %e, "Failed to build QUIC client config, skipping QUIC");
-            return fallback_to_tcp(addr, tls).await;
+            return fallback_to_tcp(addr, tls, tcp_timeout_ms).await;
         }
     };
 
@@ -236,17 +241,21 @@ pub async fn connect_with_fallback(addr: &str, tls: &TlsContext) -> (NetworkChan
         }
         Ok(Err(e)) => {
             warn!(addr = %addr, error = %e, "QUIC failed, falling back to TCP");
-            fallback_to_tcp(addr, tls).await
+            fallback_to_tcp(addr, tls, tcp_timeout_ms).await
         }
         Err(_) => {
-            warn!(addr = %addr, "QUIC timeout (500ms), falling back to TCP");
-            fallback_to_tcp(addr, tls).await
+            warn!(addr = %addr, timeout_ms = quic_timeout_ms, "QUIC timeout, falling back to TCP");
+            fallback_to_tcp(addr, tls, tcp_timeout_ms).await
         }
     }
 }
 
-async fn fallback_to_tcp(addr: &str, tls: &TlsContext) -> (NetworkChannel, Protocol) {
-    match tcp_channel::connect_tcp_tls(addr, tls).await {
+async fn fallback_to_tcp(
+    addr: &str,
+    tls: &TlsContext,
+    tcp_timeout_ms: u64,
+) -> (NetworkChannel, Protocol) {
+    match tcp_channel::connect_tcp_tls(addr, tls, tcp_timeout_ms).await {
         Ok(channel) => {
             info!(addr = %addr, "Connected via TCP+TLS fallback");
             (channel, Protocol::Tcp)
@@ -272,7 +281,7 @@ mod tests {
     #[tokio::test]
     async fn test_fallback_on_unreachable() {
         let tls = tls::TlsContext::generate_self_signed().unwrap();
-        let (_channel, proto) = connect_with_fallback("127.0.0.1:19999", &tls).await;
+        let (_channel, proto) = connect_with_fallback("127.0.0.1:19999", &tls, 500, 2000).await;
         assert_eq!(proto, Protocol::Tcp);
     }
 

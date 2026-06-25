@@ -5,8 +5,7 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
-use rustls::SignatureScheme;
-use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer, ServerName, UnixTime};
+use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -49,7 +48,7 @@ impl TlsContext {
     pub fn generate_self_signed() -> Result<Self, TlsError> {
         let key_pair =
             rcgen::KeyPair::generate().map_err(|e| TlsError::CertGeneration(e.to_string()))?;
-        let params = rcgen::CertificateParams::new(vec!["localhost".into(), "ndid.local".into()])
+        let params = rcgen::CertificateParams::new(vec!["localhost".into(), "ndid.local".into(), "127.0.0.1".into()])
             .map_err(|e| TlsError::CertGeneration(e.to_string()))?;
         let cert = params
             .self_signed(&key_pair)
@@ -115,32 +114,20 @@ impl TlsContext {
         Ok(config)
     }
 
-    pub fn to_quic_client_config(
-        &self,
-        skip_verify: bool,
-    ) -> Result<quinn::ClientConfig, TlsError> {
+    pub fn to_quic_client_config(&self) -> Result<quinn::ClientConfig, TlsError> {
         let provider = rustls::crypto::ring::default_provider();
 
-        let crypto: rustls::ClientConfig = if skip_verify {
-            rustls::ClientConfig::builder_with_provider(provider.into())
-                .with_protocol_versions(&[&rustls::version::TLS13])
-                .map_err(|e| TlsError::CertLoading(e.to_string()))?
-                .dangerous()
-                .with_custom_certificate_verifier(Arc::new(SkipCertVerifier))
-                .with_no_client_auth()
-        } else {
-            let mut roots = rustls::RootCertStore::empty();
-            for ca in &self.ca_certs {
-                roots
-                    .add(ca.clone())
-                    .map_err(|e| TlsError::CertLoading(e.to_string()))?;
-            }
-            rustls::ClientConfig::builder_with_provider(provider.into())
-                .with_protocol_versions(&[&rustls::version::TLS13])
-                .map_err(|e| TlsError::CertLoading(e.to_string()))?
-                .with_root_certificates(roots)
-                .with_no_client_auth()
-        };
+        let mut roots = rustls::RootCertStore::empty();
+        for ca in &self.ca_certs {
+            roots
+                .add(ca.clone())
+                .map_err(|e| TlsError::CertLoading(e.to_string()))?;
+        }
+        let crypto = rustls::ClientConfig::builder_with_provider(provider.into())
+            .with_protocol_versions(&[&rustls::version::TLS13])
+            .map_err(|e| TlsError::CertLoading(e.to_string()))?
+            .with_root_certificates(roots)
+            .with_no_client_auth();
 
         let quic_config = quinn::crypto::rustls::QuicClientConfig::try_from(crypto)
             .map_err(|e| TlsError::CertLoading(e.to_string()))?;
@@ -151,32 +138,20 @@ impl TlsContext {
         Ok(config)
     }
 
-    pub fn to_rustls_client_config(
-        &self,
-        skip_verify: bool,
-    ) -> Result<rustls::ClientConfig, TlsError> {
+    pub fn to_rustls_client_config(&self) -> Result<rustls::ClientConfig, TlsError> {
         let provider = rustls::crypto::ring::default_provider();
 
-        let crypto: rustls::ClientConfig = if skip_verify {
-            rustls::ClientConfig::builder_with_provider(provider.into())
-                .with_protocol_versions(&[&rustls::version::TLS13])
-                .map_err(|e| TlsError::CertLoading(e.to_string()))?
-                .dangerous()
-                .with_custom_certificate_verifier(Arc::new(SkipCertVerifier))
-                .with_no_client_auth()
-        } else {
-            let mut roots = rustls::RootCertStore::empty();
-            for ca in &self.ca_certs {
-                roots
-                    .add(ca.clone())
-                    .map_err(|e| TlsError::CertLoading(e.to_string()))?;
-            }
-            rustls::ClientConfig::builder_with_provider(provider.into())
-                .with_protocol_versions(&[&rustls::version::TLS13])
-                .map_err(|e| TlsError::CertLoading(e.to_string()))?
-                .with_root_certificates(roots)
-                .with_no_client_auth()
-        };
+        let mut roots = rustls::RootCertStore::empty();
+        for ca in &self.ca_certs {
+            roots
+                .add(ca.clone())
+                .map_err(|e| TlsError::CertLoading(e.to_string()))?;
+        }
+        let crypto = rustls::ClientConfig::builder_with_provider(provider.into())
+            .with_protocol_versions(&[&rustls::version::TLS13])
+            .map_err(|e| TlsError::CertLoading(e.to_string()))?
+            .with_root_certificates(roots)
+            .with_no_client_auth();
         Ok(crypto)
     }
 
@@ -225,47 +200,7 @@ fn load_key(path: &str) -> Result<PrivateKeyDer<'static>, TlsError> {
         .ok_or_else(|| TlsError::CertLoading("no private key found".into()))
 }
 
-#[derive(Debug)]
-pub(crate) struct SkipCertVerifier;
 
-impl rustls::client::danger::ServerCertVerifier for SkipCertVerifier {
-    fn verify_server_cert(
-        &self,
-        _end_entity: &CertificateDer<'_>,
-        _intermediates: &[CertificateDer<'_>],
-        _server_name: &ServerName<'_>,
-        _ocsp: &[u8],
-        _now: UnixTime,
-    ) -> Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
-        Ok(rustls::client::danger::ServerCertVerified::assertion())
-    }
-
-    fn verify_tls12_signature(
-        &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
-    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
-        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
-    }
-
-    fn verify_tls13_signature(
-        &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
-    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
-        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
-    }
-
-    fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
-        vec![
-            SignatureScheme::RSA_PKCS1_SHA256,
-            SignatureScheme::ECDSA_NISTP256_SHA256,
-            SignatureScheme::ED25519,
-        ]
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -281,8 +216,7 @@ mod tests {
     fn test_quic_configs() {
         let ctx = TlsContext::generate_self_signed().unwrap();
         assert!(ctx.to_quic_server_config().is_ok());
-        assert!(ctx.to_quic_client_config(true).is_ok());
-        assert!(ctx.to_rustls_client_config(true).is_ok());
-        assert!(ctx.to_rustls_client_config(false).is_ok());
+        assert!(ctx.to_quic_client_config().is_ok());
+        assert!(ctx.to_rustls_client_config().is_ok());
     }
 }

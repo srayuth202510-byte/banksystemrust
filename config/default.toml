@@ -15,6 +15,7 @@ per_ip_limit = 100
 quic_port = 4433
 tcp_port = 8443
 quic_timeout_ms = 500
+tcp_timeout_ms = 2000
 fallback_enabled = true
 peers = []
 

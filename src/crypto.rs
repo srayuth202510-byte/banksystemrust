@@ -129,6 +129,7 @@ pub fn hash(data: &[u8]) -> [u8; 32] {
     hasher.finalize().into()
 }
 
+#[must_use]
 pub fn hash_hex(data: &[u8]) -> String {
     hex::encode(hash(data))
 }

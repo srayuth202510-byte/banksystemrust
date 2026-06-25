@@ -46,6 +46,8 @@ pub struct P2pNode {
     peers: Vec<String>,
     load_balancer: LoadBalancerStrategy,
     next_peer_index: AtomicUsize,
+    quic_timeout_ms: u64,
+    tcp_timeout_ms: u64,
 }
 
 impl std::fmt::Debug for P2pNode {
@@ -66,7 +68,15 @@ impl P2pNode {
             peers: Vec::new(),
             load_balancer: LoadBalancerStrategy::RoundRobin,
             next_peer_index: AtomicUsize::new(0),
+            quic_timeout_ms: 500,
+            tcp_timeout_ms: 2000,
         }
+    }
+
+    pub fn with_timeouts(mut self, quic: u64, tcp: u64) -> Self {
+        self.quic_timeout_ms = quic;
+        self.tcp_timeout_ms = tcp;
+        self
     }
 
     pub fn with_load_balancer(mut self, load_balancer: LoadBalancerStrategy) -> Self {
@@ -121,7 +131,13 @@ impl P2pNode {
         let msg_bytes = serde_json::to_vec(&message)
             .map_err(|e| P2pError::Network(network::NetworkError::TlsError(e.to_string())))?;
 
-        let (channel, protocol) = network::connect_with_fallback(peer_addr, &self.tls).await;
+        let (channel, protocol) = network::connect_with_fallback(
+            peer_addr,
+            &self.tls,
+            self.quic_timeout_ms,
+            self.tcp_timeout_ms,
+        )
+        .await;
         if channel.stream.is_none() {
             return Err(P2pError::Network(network::NetworkError::BothFailed));
         }

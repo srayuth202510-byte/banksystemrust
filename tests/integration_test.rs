@@ -112,7 +112,7 @@ async fn test_invalid_signature_rejection() {
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-    let (channel, _protocol) = connect_with_fallback(&tcp_addr, &tls).await;
+    let (channel, _protocol) = connect_with_fallback(&tcp_addr, &tls, 500, 2000).await;
     let _ = shutdown_tx.send(());
     assert!(channel.stream.is_some());
 

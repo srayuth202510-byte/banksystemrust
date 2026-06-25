@@ -29,7 +29,7 @@ pub async fn connect_quic(
     let endpoint = quinn::Endpoint::client(local_addr)
         .map_err(|e| NetworkError::QuicFailed(format!("endpoint creation failed: {e}")))?;
 
-    let server_name = "localhost";
+    let server_name = addr.split(':').next().unwrap_or("localhost");
 
     let connecting = endpoint
         .connect_with(config.clone(), server_addr, server_name)

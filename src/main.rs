@@ -6,24 +6,24 @@
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
 use std::path::PathBuf;
-use std::time::Duration;
 
 use async_graphql::{EmptySubscription, http::GraphiQLSource};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{
     Router,
     error_handling::HandleErrorLayer,
-    extract::State,
+    extract::{State, ConnectInfo, Request, Extension},
     http::StatusCode,
-    response::{Html, IntoResponse},
+    response::{Html, IntoResponse, Response},
     routing::get,
+    middleware::{self, Next},
 };
 use clap::Parser;
 use opentelemetry_sdk::trace::TracerProvider;
 use opentelemetry_stdout::SpanExporter;
 use tokio::net::TcpListener;
-use tokio::sync::broadcast;
-use tower::{BoxError, ServiceBuilder, buffer::BufferLayer, limit::RateLimitLayer};
+use tokio::sync::{broadcast, Mutex as TokioMutex};
+use tower::{BoxError, ServiceBuilder, buffer::BufferLayer};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
@@ -46,6 +46,39 @@ struct Cli {
 
 async fn graphiql() -> impl IntoResponse {
     Html(GraphiQLSource::build().endpoint("/graphql").finish())
+}
+
+#[derive(Clone)]
+struct RateLimitState {
+    redis: std::sync::Arc<RedisCache>,
+    fallback: std::sync::Arc<TokioMutex<std::collections::HashMap<std::net::IpAddr, u64>>>,
+    limit: u64,
+}
+
+async fn per_ip_rate_limiter(
+    ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
+    Extension(state): Extension<RateLimitState>,
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let ip = addr.ip();
+    let allowed = match state.redis.check_rate_limit(&ip.to_string(), state.limit).await {
+        Ok(true) => true,
+        Ok(false) => false,
+        Err(e) => {
+            tracing::warn!(error = %e, "Redis rate limit failed, using fallback");
+            let mut map = state.fallback.lock().await;
+            let count = map.entry(ip).or_insert(0);
+            *count += 1;
+            *count <= state.limit
+        }
+    };
+
+    if !allowed {
+        return Err(StatusCode::TOO_MANY_REQUESTS);
+    }
+    
+    Ok(next.run(req).await)
 }
 
 async fn graphql_handler(
@@ -233,7 +266,12 @@ async fn main() {
     };
 
     let mut p2p_node = P2pNode::new(config.bank_code.clone(), keypair, tls.clone());
-    p2p_node = p2p_node.with_load_balancer(config.network.load_balancer.strategy.clone());
+    p2p_node = p2p_node
+        .with_load_balancer(config.network.load_balancer.strategy.clone())
+        .with_timeouts(
+            config.network.quic_timeout_ms,
+            config.network.tcp_timeout_ms,
+        );
     for peer in &config.network.peers {
         p2p_node.add_peer(peer.clone());
     }
@@ -264,7 +302,7 @@ async fn main() {
     let schema = async_graphql::Schema::build(QueryRoot, MutationRoot, EmptySubscription)
         .data(p2p_node)
         .data(blockchain_client)
-        .data(redis_cache)
+        .data(redis_cache.clone())
         .finish();
 
     let (shutdown_tx, shutdown_future) = create_shutdown_signal();
@@ -304,12 +342,14 @@ async fn main() {
                         format!("Unhandled error: {}", err),
                     )
                 }))
-                .layer(BufferLayer::new(1024))
-                .layer(RateLimitLayer::new(
-                    config.server.rate_limit.requests_per_second,
-                    Duration::from_secs(1),
-                )),
+                .layer(BufferLayer::new(1024)),
         )
+        .layer(middleware::from_fn(per_ip_rate_limiter))
+        .layer(Extension(RateLimitState {
+            redis: redis_cache.clone(),
+            fallback: std::sync::Arc::new(TokioMutex::new(std::collections::HashMap::new())),
+            limit: config.server.rate_limit.per_ip_limit,
+        }))
         .with_state(schema);
 
     let addr = format!("{}:{}", config.server.host, config.server.port);
@@ -320,7 +360,7 @@ async fn main() {
         std::process::exit(1);
     });
 
-    axum::serve(listener, app)
+    axum::serve(listener, app.into_make_service_with_connect_info::<std::net::SocketAddr>())
         .with_graceful_shutdown(shutdown_future)
         .await
         .unwrap_or_else(|e| {

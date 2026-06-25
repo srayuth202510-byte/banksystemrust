@@ -100,7 +100,7 @@ impl BlockchainClient {
             .default_headers(headers)
             .timeout(Duration::from_secs(config.timeout_secs + 2))
             .build()
-            .unwrap_or_default();
+            .map_err(|e| BlockchainError::Http(format!("Failed to build HTTP client: {e}")))?;
 
         let mut opts = rocksdb::Options::default();
         opts.create_if_missing(true);
@@ -168,7 +168,7 @@ impl BlockchainClient {
             }
             Ok(Err(BlockchainError::NodeUnreachable(_))) | Err(_) => {
                 warn!(tx_id = %tx.tx_id, "Blockchain node unreachable or timeout, queuing");
-                let tx_bytes = bincode::serialize(&tx).map_err(|e| {
+                let tx_bytes = postcard::to_allocvec(&tx).map_err(|e| {
                     BlockchainError::TransactionFailed(format!("serialization failed: {e}"))
                 })?;
                 let _ = self.db.put(tx.tx_id.as_bytes(), tx_bytes);
@@ -233,8 +233,8 @@ impl BlockchainClient {
                 Ok(TransactionReceipt {
                     tx_id: tx.tx_id.clone(),
                     block_hash,
-                    block_number: 1,
-                    status: TxStatus::Finalized,
+                    block_number: 0,
+                    status: TxStatus::Pending,
                 })
             }
             Err(e) => {
@@ -254,7 +254,7 @@ impl BlockchainClient {
     pub fn drain_queue(&self) -> Vec<BlockchainTransaction> {
         let mut drained = Vec::new();
         for (k, v) in self.db.iterator(rocksdb::IteratorMode::Start).flatten() {
-            if let Ok(tx) = bincode::deserialize::<BlockchainTransaction>(&v) {
+            if let Ok(tx) = postcard::from_bytes::<BlockchainTransaction>(&v) {
                 drained.push(tx);
             }
             let _ = self.db.delete(&k);
@@ -265,7 +265,7 @@ impl BlockchainClient {
     pub async fn retry_all_queued(&self) {
         let mut to_retry = Vec::new();
         for (k, v) in self.db.iterator(rocksdb::IteratorMode::Start).flatten() {
-            if let Ok(tx) = bincode::deserialize::<BlockchainTransaction>(&v) {
+            if let Ok(tx) = postcard::from_bytes::<BlockchainTransaction>(&v) {
                 to_retry.push((k, tx));
             }
         }

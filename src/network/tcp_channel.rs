@@ -15,21 +15,26 @@ use tokio::time::{Duration, timeout};
 use tokio_rustls::{TlsAcceptor, TlsConnector};
 use tracing::{info, warn};
 
-pub async fn connect_tcp_tls(addr: &str, tls: &TlsContext) -> Result<NetworkChannel, NetworkError> {
+pub async fn connect_tcp_tls(
+    addr: &str,
+    tls: &TlsContext,
+    tcp_timeout_ms: u64,
+) -> Result<NetworkChannel, NetworkError> {
     info!(addr = %addr, "Attempting TCP+TLS connection");
 
-    let tcp_timeout = Duration::from_secs(2);
-    let tcp = timeout(tcp_timeout, TcpStream::connect(addr))
+    let connect_timeout = Duration::from_millis(tcp_timeout_ms);
+    let tcp = timeout(connect_timeout, TcpStream::connect(addr))
         .await
         .map_err(|_| NetworkError::Timeout)?
         .map_err(|e| NetworkError::TcpFailed(format!("tcp connect failed: {e}")))?;
 
     let tls_config = tls
-        .to_rustls_client_config(false)
+        .to_rustls_client_config()
         .map_err(|e| NetworkError::TlsError(e.to_string()))?;
 
     let connector = TlsConnector::from(Arc::new(tls_config));
-    let server_name = rustls::pki_types::ServerName::try_from("localhost")
+    let host = addr.split(':').next().unwrap_or("localhost");
+    let server_name = rustls::pki_types::ServerName::try_from(host.to_string())
         .map_err(|_| NetworkError::TlsError("invalid server name".into()))?;
 
     let tls_stream = connector
