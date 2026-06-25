@@ -18,6 +18,9 @@ quic_timeout_ms = 500
 fallback_enabled = true
 peers = []
 
+[network.load_balancer]
+strategy = "round_robin"
+
 [blockchain]
 endpoint = "http://127.0.0.1:9933"
 timeout_secs = 5
@@ -35,3 +38,9 @@ encryption_algorithm = "AES-256-GCM"
 level = "info"
 format = "json"
 directory = "/var/log/ndid"
+
+[redis]
+enabled = false
+url = "redis://127.0.0.1:6379/"
+ttl_secs = 300
+timeout_ms = 200

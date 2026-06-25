@@ -73,6 +73,7 @@ tracing-opentelemetry = "0.25"
 
 # Database / Storage
 rocksdb = "0.24.0"
+redis = { version = "0.27", features = ["aio", "tokio-comp"] }
 
 # Rate limiting
 tower = { version = "0.5", features = ["limit", "buffer", "util"] }

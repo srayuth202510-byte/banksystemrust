@@ -112,3 +112,25 @@ jobs:
           cache-to: type=gha,mode=max
           push: false
           tags: ndid-gateway:ci
+
+  compose:
+    name: Compose config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare production secret fixtures
+        run: |
+          mkdir -p secrets/prod
+          printf 'dummy-cert\n' > secrets/prod/gateway.crt
+          printf 'dummy-key\n' > secrets/prod/gateway.key
+          printf 'dummy-ca\n' > secrets/prod/ca.crt
+          printf 'dummy-password\n' > secrets/prod/redis_password.txt
+
+      - name: Validate development compose
+        run: docker compose -f docker-compose.yml config >/dev/null
+
+      - name: Validate production compose
+        env:
+          NDID_REDIS_URL: rediss://redis.example.internal:6379/0
+        run: docker compose -f docker-compose.prod.yml config >/dev/null

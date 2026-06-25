@@ -12,4 +12,5 @@ pub mod identity;
 pub mod metrics;
 pub mod network;
 pub mod p2p_quic;
+pub mod redis_cache;
 pub mod schema;

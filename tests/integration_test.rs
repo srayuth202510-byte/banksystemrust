@@ -11,6 +11,7 @@ use banksystemrust::network::tcp_channel::start_tcp_server;
 use banksystemrust::network::tls::TlsContext;
 use banksystemrust::network::{ConnectionChannel, Protocol, connect_with_fallback};
 use banksystemrust::p2p_quic::{P2pMessage, P2pNode};
+use banksystemrust::redis_cache::RedisCache;
 use tokio::sync::broadcast;
 
 fn init_logging() {
@@ -150,6 +151,8 @@ async fn test_graphql_flow() {
     };
     let blockchain_client =
         std::sync::Arc::new(banksystemrust::blockchain::BlockchainClient::new(config).unwrap());
+    let redis_cache =
+        std::sync::Arc::new(RedisCache::new(banksystemrust::config::RedisConfig::default()).unwrap());
 
     let schema = async_graphql::Schema::build(
         banksystemrust::schema::QueryRoot,
@@ -158,6 +161,7 @@ async fn test_graphql_flow() {
     )
     .data(p2p_node)
     .data(blockchain_client)
+    .data(redis_cache)
     .finish();
 
     let mutation = r#"

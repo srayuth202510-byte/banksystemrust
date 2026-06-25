@@ -34,6 +34,7 @@ use banksystemrust::crypto::KeyPair;
 use banksystemrust::network::quic_channel;
 use banksystemrust::network::tls::TlsContext;
 use banksystemrust::p2p_quic::P2pNode;
+use banksystemrust::redis_cache::RedisCache;
 use banksystemrust::schema::{MutationRoot, QueryRoot};
 
 #[derive(Parser)]
@@ -188,6 +189,11 @@ async fn main() {
         "Blockchain configured"
     );
 
+    let production_mode = matches!(
+        std::env::var("NDID_ENV"),
+        Ok(value) if value.eq_ignore_ascii_case("production")
+    );
+
     let tls = if let (Some(cert_path), Some(key_path)) =
         (&config.network.cert_path, &config.network.key_path)
     {
@@ -203,6 +209,9 @@ async fn main() {
         }
         info!("TLS certificates loaded from files");
         ctx
+    } else if production_mode {
+        error!("Production mode requires network.cert_path and network.key_path");
+        std::process::exit(1);
     } else {
         let ctx = TlsContext::generate_self_signed().unwrap_or_else(|e| {
             error!(error = %e, "Failed to generate TLS certificates");
@@ -224,6 +233,7 @@ async fn main() {
     };
 
     let mut p2p_node = P2pNode::new(config.bank_code.clone(), keypair, tls.clone());
+    p2p_node = p2p_node.with_load_balancer(config.network.load_balancer.strategy.clone());
     for peer in &config.network.peers {
         p2p_node.add_peer(peer.clone());
     }
@@ -234,6 +244,12 @@ async fn main() {
             std::process::exit(1);
         }),
     );
+    let redis_cache = std::sync::Arc::new(RedisCache::new(config.redis.clone()).unwrap_or_else(
+        |e| {
+            error!(error = %e, "Failed to initialize Redis cache");
+            std::process::exit(1);
+        },
+    ));
 
     // Background Retry Worker for Substrate node
     let worker_client = blockchain_client.clone();
@@ -248,6 +264,7 @@ async fn main() {
     let schema = async_graphql::Schema::build(QueryRoot, MutationRoot, EmptySubscription)
         .data(p2p_node)
         .data(blockchain_client)
+        .data(redis_cache)
         .finish();
 
     let (shutdown_tx, shutdown_future) = create_shutdown_signal();

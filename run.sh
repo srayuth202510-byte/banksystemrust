@@ -21,6 +21,48 @@ CONFIG_FILE="config/default.toml"
 RELEASE_MODE=false
 RUN_TESTS=false
 CHECK_ONLY=false
+USE_DOCKER=false
+
+compose_cmd=()
+
+detect_compose() {
+    if command -v docker &> /dev/null; then
+        if docker compose version &> /dev/null; then
+            compose_cmd=(docker compose)
+            return 0
+        fi
+    fi
+
+    if command -v docker-compose &> /dev/null; then
+        compose_cmd=(docker-compose)
+        return 0
+    fi
+
+    return 1
+}
+
+run_cargo() {
+    local cargo_args=("$@")
+
+    if command -v cargo &> /dev/null; then
+        if command -v rtk &> /dev/null; then
+            rtk cargo "${cargo_args[@]}"
+        else
+            cargo "${cargo_args[@]}"
+        fi
+        return $?
+    fi
+
+    if detect_compose; then
+        USE_DOCKER=true
+        "${compose_cmd[@]}" run --rm ndid-toolchain cargo "${cargo_args[@]}"
+        return $?
+    fi
+
+    echo -e "${RED}Error: Cargo/Rust is not installed and Docker Compose is unavailable.${NC}"
+    echo -e "${YELLOW}Hint: install Rust with 'curl https://sh.rustup.rs -sSf | sh' or install Docker to use the container workflow.${NC}"
+    exit 1
+}
 
 # Helper menu
 show_help() {
@@ -53,27 +95,13 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-# Check if Rust/Cargo is installed
-if ! command -v cargo &> /dev/null; then
-    echo -e "${RED}Error: Cargo/Rust is not installed. Please install Rust first.${NC}"
-    exit 1
-fi
-
 # Action execution
 if [ "$RUN_TESTS" = true ]; then
     echo -e "${YELLOW}Running tests...${NC}"
-    if command -v rtk &> /dev/null; then
-        rtk cargo test
-    else
-        cargo test
-    fi
+    run_cargo test
 elif [ "$CHECK_ONLY" = true ]; then
     echo -e "${YELLOW}Running code check & lints...${NC}"
-    if command -v rtk &> /dev/null; then
-        rtk cargo check && rtk cargo clippy -- -D warnings && rtk cargo fmt --all -- --check
-    else
-        cargo check && cargo clippy -- -D warnings && cargo fmt --all -- --check
-    fi
+    run_cargo check && run_cargo clippy -- -D warnings && run_cargo fmt --all -- --check
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}All checks passed!${NC}"
     else
@@ -82,21 +110,25 @@ elif [ "$CHECK_ONLY" = true ]; then
     fi
 else
     # Compile and run gateway
+    if ! command -v cargo &> /dev/null; then
+        if detect_compose; then
+            echo -e "${YELLOW}Cargo/Rust is not installed locally; using Docker Compose for the gateway.${NC}"
+            echo -e "${CYAN}Building and starting services...${NC}"
+            "${compose_cmd[@]}" up --build ndid-gateway ndid-blockchain ndid-redis
+            exit $?
+        fi
+        echo -e "${RED}Error: Cargo/Rust is not installed and Docker Compose is unavailable.${NC}"
+        echo -e "${YELLOW}Hint: install Rust with 'curl https://sh.rustup.rs -sSf | sh' or install Docker to use the container workflow.${NC}"
+        exit 1
+    fi
+
     if [ "$RELEASE_MODE" = true ]; then
         echo -e "${GREEN}Starting NDID Gateway in RELEASE mode...${NC}"
         echo -e "${CYAN}Configuration:${NC} $CONFIG_FILE"
-        if command -v rtk &> /dev/null; then
-            rtk cargo run --release --bin ndid-gateway -- --config "$CONFIG_FILE"
-        else
-            cargo run --release --bin ndid-gateway -- --config "$CONFIG_FILE"
-        fi
+        run_cargo run --release --bin ndid-gateway -- --config "$CONFIG_FILE"
     else
         echo -e "${GREEN}Starting NDID Gateway in DEBUG/DEV mode...${NC}"
         echo -e "${CYAN}Configuration:${NC} $CONFIG_FILE"
-        if command -v rtk &> /dev/null; then
-            rtk cargo run --bin ndid-gateway -- --config "$CONFIG_FILE"
-        else
-            cargo run --bin ndid-gateway -- --config "$CONFIG_FILE"
-        fi
+        run_cargo run --bin ndid-gateway -- --config "$CONFIG_FILE"
     fi
 fi

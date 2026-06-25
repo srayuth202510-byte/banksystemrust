@@ -1,4 +1,22 @@
 services:
+  ndid-toolchain:
+    build:
+      context: .
+      dockerfile: Dockerfile.tools
+    container_name: ndid-toolchain
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+      - toolchain-cargo-registry:/usr/local/cargo/registry
+      - toolchain-cargo-git:/usr/local/cargo/git
+      - toolchain-target:/workspace/target
+    environment:
+      - CARGO_HOME=/usr/local/cargo
+      - RUST_LOG=${RUST_LOG:-info}
+    command: ["sleep", "infinity"]
+    networks:
+      - ndid-net
+
   ndid-gateway:
     build:
       context: .
@@ -15,12 +33,22 @@ services:
       - RUST_LOG=${RUST_LOG:-info}
       - NDID_SERVER__HOST=0.0.0.0
       - NDID_SERVER__PORT=8080
+      - NDID_BLOCKCHAIN__ENDPOINT=http://ndid-blockchain:9933
+      - NDID_REDIS__ENABLED=${NDID_REDIS_ENABLED:-true}
+      - NDID_REDIS__URL=${NDID_REDIS_URL:-redis://ndid-redis:6379/}
+      - NDID_REDIS__TTL_SECS=${NDID_REDIS_TTL_SECS:-300}
+      - NDID_REDIS__TIMEOUT_MS=${NDID_REDIS_TIMEOUT_MS:-200}
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 10s
+    depends_on:
+      ndid-blockchain:
+        condition: service_started
+      ndid-redis:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - ndid-net
@@ -45,9 +73,31 @@ services:
     networks:
       - ndid-net
 
+  ndid-redis:
+    image: redis:7-alpine
+    container_name: ndid-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - ndid-net
+
 volumes:
   ndid-logs:
   blockchain-data:
+  redis-data:
+  toolchain-cargo-registry:
+  toolchain-cargo-git:
+  toolchain-target:
 
 networks:
   ndid-net:

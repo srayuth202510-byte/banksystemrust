@@ -25,6 +25,25 @@ impl Default for RateLimitConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LoadBalancerStrategy {
+    RoundRobin,
+    Fanout,
+}
+
+impl Default for LoadBalancerStrategy {
+    fn default() -> Self {
+        Self::RoundRobin
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct LoadBalancerConfig {
+    #[serde(default)]
+    pub strategy: LoadBalancerStrategy,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
     pub host: String,
@@ -42,6 +61,8 @@ pub struct NetworkConfig {
     pub quic_timeout_ms: u64,
     pub fallback_enabled: bool,
     pub peers: Vec<String>,
+    #[serde(default)]
+    pub load_balancer: LoadBalancerConfig,
     #[serde(default)]
     pub cert_path: Option<String>,
     #[serde(default)]
@@ -80,6 +101,42 @@ pub struct LoggingConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RedisConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    pub url: String,
+    #[serde(default)]
+    pub username: Option<String>,
+    #[serde(default)]
+    pub password_file: Option<PathBuf>,
+    #[serde(default = "default_redis_ttl_secs")]
+    pub ttl_secs: u64,
+    #[serde(default = "default_redis_timeout_ms")]
+    pub timeout_ms: u64,
+}
+
+const fn default_redis_ttl_secs() -> u64 {
+    300
+}
+
+const fn default_redis_timeout_ms() -> u64 {
+    200
+}
+
+impl Default for RedisConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            url: "redis://127.0.0.1:6379/".into(),
+            username: None,
+            password_file: None,
+            ttl_secs: default_redis_ttl_secs(),
+            timeout_ms: default_redis_timeout_ms(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub bank_code: String,
     pub server: ServerConfig,
@@ -87,6 +144,8 @@ pub struct AppConfig {
     pub blockchain: BlockchainConfig,
     pub crypto: CryptoConfig,
     pub logging: LoggingConfig,
+    #[serde(default)]
+    pub redis: RedisConfig,
 }
 
 impl Default for AppConfig {
@@ -106,6 +165,7 @@ impl Default for AppConfig {
                 quic_timeout_ms: 500,
                 fallback_enabled: true,
                 peers: Vec::new(),
+                load_balancer: LoadBalancerConfig::default(),
                 cert_path: None,
                 key_path: None,
                 ca_cert_path: None,
@@ -129,12 +189,17 @@ impl Default for AppConfig {
                 format: "json".into(),
                 directory: "/var/log/ndid".into(),
             },
+            redis: RedisConfig::default(),
         }
     }
 }
 
 impl AppConfig {
     pub fn validate(&self) -> Result<(), String> {
+        self.validate_with_mode(is_production_mode())
+    }
+
+    pub fn validate_with_mode(&self, production_mode: bool) -> Result<(), String> {
         if self.bank_code.trim().is_empty() {
             return Err("bank_code cannot be empty".into());
         }
@@ -152,6 +217,9 @@ impl AppConfig {
         }
         if self.network.tcp_port == 0 {
             return Err("network.tcp_port cannot be 0".into());
+        }
+        if self.network.cert_path.is_some() ^ self.network.key_path.is_some() {
+            return Err("network.cert_path and network.key_path must be provided together".into());
         }
         if self.server.port == self.network.quic_port
             || self.server.port == self.network.tcp_port
@@ -180,10 +248,44 @@ impl AppConfig {
                 return Err("crypto.hsm_pin cannot be empty when hsm_enabled is true".into());
             }
         }
+        if self.redis.enabled {
+            if !(self.redis.url.starts_with("redis://") || self.redis.url.starts_with("rediss://"))
+            {
+                return Err("redis.url must start with redis:// or rediss://".into());
+            }
+            if production_mode && !self.redis.url.starts_with("rediss://") {
+                return Err("redis.url must use rediss:// in production".into());
+            }
+            if production_mode && self.redis.password_file.is_none() {
+                return Err("redis.password_file is required in production".into());
+            }
+            if self
+                .redis
+                .username
+                .as_ref()
+                .is_some_and(|username| username.trim().is_empty())
+            {
+                return Err("redis.username cannot be empty when provided".into());
+            }
+            if self
+                .redis
+                .password_file
+                .as_ref()
+                .is_some_and(|path| path.as_os_str().is_empty())
+            {
+                return Err("redis.password_file cannot be empty when provided".into());
+            }
+            if self.redis.ttl_secs == 0 {
+                return Err("redis.ttl_secs cannot be 0 when redis is enabled".into());
+            }
+            if self.redis.timeout_ms == 0 {
+                return Err("redis.timeout_ms cannot be 0 when redis is enabled".into());
+            }
+        }
         Ok(())
     }
 
-    pub fn load(path: Option<PathBuf>) -> Result<Self, config::ConfigError> {
+    pub fn load(path: Option<PathBuf>) -> Result<Self, AppConfigError> {
         let cfg_path = path.unwrap_or_else(|| PathBuf::from("config/default.toml"));
         let settings = config::Config::builder()
             .add_source(config::File::from(cfg_path).required(false))
@@ -194,9 +296,16 @@ impl AppConfig {
             )
             .build()?;
         let config: Self = settings.try_deserialize()?;
-        config.validate().map_err(config::ConfigError::Message)?;
+        config.validate().map_err(AppConfigError::Message)?;
         Ok(config)
     }
+}
+
+fn is_production_mode() -> bool {
+    matches!(
+        std::env::var("NDID_ENV"),
+        Ok(value) if value.eq_ignore_ascii_case("production")
+    )
 }
 
 #[cfg(test)]
@@ -233,6 +342,16 @@ mod tests {
     }
 
     #[test]
+    fn test_tls_cert_key_must_be_paired() {
+        let mut config = AppConfig::default();
+        config.network.cert_path = Some("config/certs/bank.crt".into());
+        assert!(config.validate().is_err());
+
+        config.network.key_path = Some("config/certs/bank.key".into());
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
     fn test_hsm_validation() {
         let mut config = AppConfig::default();
         config.crypto.hsm_enabled = true;
@@ -260,5 +379,50 @@ mod tests {
         assert_eq!(rl.requests_per_second, 1000);
         assert_eq!(rl.burst, 2000);
         assert_eq!(rl.per_ip_limit, 100);
+    }
+
+    #[test]
+    fn test_load_balancer_defaults() {
+        let cfg = AppConfig::default();
+        assert_eq!(
+            cfg.network.load_balancer.strategy,
+            LoadBalancerStrategy::RoundRobin
+        );
+    }
+
+    #[test]
+    fn test_redis_defaults() {
+        let cfg = AppConfig::default();
+        assert!(!cfg.redis.enabled);
+        assert_eq!(cfg.redis.ttl_secs, 300);
+        assert_eq!(cfg.redis.timeout_ms, 200);
+    }
+
+    #[test]
+    fn test_invalid_redis_url() {
+        let mut cfg = AppConfig::default();
+        cfg.redis.enabled = true;
+        cfg.redis.url = "http://127.0.0.1:6379".into();
+        assert!(cfg.validate().is_err());
+    }
+
+    #[test]
+    fn test_production_requires_rediss_for_redis() {
+        let mut cfg = AppConfig::default();
+        cfg.redis.enabled = true;
+        cfg.redis.url = "redis://redis.example.internal:6379/".into();
+        cfg.redis.password_file = Some(PathBuf::from("/run/secrets/redis_password"));
+        assert!(cfg.validate_with_mode(true).is_err());
+
+        cfg.redis.url = "rediss://redis.example.internal:6379/".into();
+        assert!(cfg.validate_with_mode(true).is_ok());
+    }
+
+    #[test]
+    fn test_production_requires_redis_password_file() {
+        let mut cfg = AppConfig::default();
+        cfg.redis.enabled = true;
+        cfg.redis.url = "rediss://redis.example.internal:6379/".into();
+        assert!(cfg.validate_with_mode(true).is_err());
     }
 }

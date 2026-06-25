@@ -6,9 +6,11 @@
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use thiserror::Error;
 use tracing::info;
 
+use crate::config::LoadBalancerStrategy;
 use crate::crypto;
 use crate::network;
 use crate::network::{Protocol, tls::TlsContext};
@@ -42,6 +44,8 @@ pub struct P2pNode {
     pub keypair: crypto::KeyPair,
     pub tls: TlsContext,
     peers: Vec<String>,
+    load_balancer: LoadBalancerStrategy,
+    next_peer_index: AtomicUsize,
 }
 
 impl std::fmt::Debug for P2pNode {
@@ -60,7 +64,14 @@ impl P2pNode {
             keypair,
             tls,
             peers: Vec::new(),
+            load_balancer: LoadBalancerStrategy::RoundRobin,
+            next_peer_index: AtomicUsize::new(0),
         }
+    }
+
+    pub fn with_load_balancer(mut self, load_balancer: LoadBalancerStrategy) -> Self {
+        self.load_balancer = load_balancer;
+        self
     }
 
     pub fn add_peer(&mut self, addr: String) {
@@ -131,6 +142,20 @@ impl P2pNode {
     pub fn peers(&self) -> &[String] {
         &self.peers
     }
+
+    pub fn select_peers(&self) -> Vec<String> {
+        if self.peers.is_empty() {
+            return Vec::new();
+        }
+
+        match self.load_balancer {
+            LoadBalancerStrategy::Fanout => self.peers.clone(),
+            LoadBalancerStrategy::RoundRobin => {
+                let index = self.next_peer_index.fetch_add(1, Ordering::Relaxed) % self.peers.len();
+                vec![self.peers[index].clone()]
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -156,6 +181,29 @@ mod tests {
         let mut node = test_node("KBANK");
         node.add_peer("10.0.1.50:4433".into());
         assert_eq!(node.peers().len(), 1);
+    }
+
+    #[test]
+    fn test_round_robin_peer_selection() {
+        let mut node = test_node("KTB").with_load_balancer(LoadBalancerStrategy::RoundRobin);
+        node.add_peer("10.0.1.50:4433".into());
+        node.add_peer("10.0.1.51:4433".into());
+
+        assert_eq!(node.select_peers(), vec!["10.0.1.50:4433".to_string()]);
+        assert_eq!(node.select_peers(), vec!["10.0.1.51:4433".to_string()]);
+        assert_eq!(node.select_peers(), vec!["10.0.1.50:4433".to_string()]);
+    }
+
+    #[test]
+    fn test_fanout_peer_selection() {
+        let mut node = test_node("KTB").with_load_balancer(LoadBalancerStrategy::Fanout);
+        node.add_peer("10.0.1.50:4433".into());
+        node.add_peer("10.0.1.51:4433".into());
+
+        assert_eq!(
+            node.select_peers(),
+            vec!["10.0.1.50:4433".to_string(), "10.0.1.51:4433".to_string()]
+        );
     }
 
     #[tokio::test]

@@ -49,6 +49,10 @@ graph TD
 
 3. **Persistent Transaction Queue (RocksDB)**
    - ใช้ **RocksDB** ในการเก็บคิวธุรกรรมที่มีประสิทธิภาพสูงบน Disk แทน Memory
+
+4. **Optional Redis Cache**
+   - รองรับ **Redis** สำหรับ cache สถานะธุรกรรมและผล lookup ระยะสั้นของ GraphQL เพื่อลด latency ของคำสั่งตรวจสอบสถานะ
+   - Redis เป็น optional layer และไม่แทนที่คิวถาวรใน RocksDB
    - มีระบบ **Background Retry Worker** คอยส่งธุรกรรมที่ค้างคาไปยังบล็อกเชน Substrate เมื่อเครือข่ายกลับมาทำงานปกติ
 
 4. **Security-First Implementations**
@@ -96,6 +100,8 @@ banksystemrust/
 * **Rust Compiler** (เวอร์ชันล่าสุด 2024 edition)
 * **LLVM/Clang** และไลบรารีสำหรับการสร้าง RocksDB
 * หากต้องการใช้ฟีเจอร์ HSM จำเป็นต้องมี **SoftHSM2** หรือฮาร์ดแวร์จริงพร้อม PKCS#11 Driver
+* ถ้าเครื่องยังไม่มี Rust ให้ติดตั้งผ่าน `rustup` แล้วตรวจสอบว่า `cargo` และ `rustc` อยู่ใน `PATH` ก่อนรันสคริปต์
+* ถ้าไม่ต้องการติดตั้ง Rust บนโฮสต์ ให้ใช้ Docker Compose workflow แทน โดยสคริปต์ `run.sh` จะ fallback ไปยัง `ndid-toolchain`
 
 ---
 
@@ -127,6 +133,64 @@ banksystemrust/
 ```bash
 ./run.sh --help
 ```
+
+ถ้าเจอข้อความว่า `Cargo/Rust is not installed` ให้ติดตั้ง Rust toolchain ก่อน:
+
+```bash
+curl https://sh.rustup.rs -sSf | sh
+source "$HOME/.cargo/env"
+```
+
+ถ้า Docker พร้อมใช้งาน `run.sh` จะใช้ container `ndid-toolchain` สำหรับ `check` และ `test` โดยอัตโนมัติ
+
+### 🐳 Run With Docker Compose
+
+หากต้องการเปิดใช้งาน Redis cache พร้อมกับ Gateway และ Substrate node:
+
+```bash
+docker compose up -d
+```
+
+ค่าเริ่มต้นของ `docker-compose.yml` จะเปิด Redis cache ให้กับ container ของ gateway ผ่าน environment variables ต่อไปนี้:
+
+```bash
+NDID_REDIS__ENABLED=true
+NDID_REDIS__URL=redis://ndid-redis:6379/
+NDID_REDIS__TTL_SECS=300
+NDID_REDIS__TIMEOUT_MS=200
+NDID_BLOCKCHAIN__ENDPOINT=http://ndid-blockchain:9933
+```
+
+หากต้องการปิด Redis cache ชั่วคราว:
+
+```bash
+NDID_REDIS_ENABLED=false docker compose up -d
+```
+
+สำหรับ production ให้ตั้ง `NDID_ENV=production` และกำหนด `network.cert_path` กับ `network.key_path` ให้ชัดเจนก่อนเริ่มระบบ เพื่อปิด self-signed fallback.
+ถ้าเปิด Redis ใน production ต้องใช้ `rediss://` และควรใส่ credentials ไว้ใน URL หรือผ่าน Redis proxy ที่บังคับ TLS.
+
+### 🏭 Production Compose
+
+ใช้ไฟล์ `docker-compose.prod.yml` สำหรับ deployment production:
+
+```bash
+NDID_REDIS_URL=rediss://redis.example.internal:6379/0 docker compose -f docker-compose.prod.yml up -d
+```
+
+ไฟล์ production จะ:
+
+- บังคับ `NDID_ENV=production`
+- Mount TLS cert/key/CA และ Redis password จาก `./secrets/prod/`
+- ไม่สตาร์ท Redis แบบ plaintext ใน local network
+- บังคับให้ Redis endpoint เป็น `rediss://`
+
+สร้างไฟล์ secret ตามชื่อเหล่านี้ก่อน deploy:
+
+- `./secrets/prod/gateway.crt`
+- `./secrets/prod/gateway.key`
+- `./secrets/prod/ca.crt`
+- `./secrets/prod/redis_password.txt`
 
 ---
 
@@ -171,6 +235,23 @@ encryption_algorithm = "AES-256-GCM"
 level = "info"
 format = "json"
 directory = "/var/log/ndid"
+
+[redis]
+enabled = false
+url = "redis://127.0.0.1:6379/"
+username = "default"                        # (Optional) Redis ACL user; use in production with a password file
+password_file = "secrets/prod/redis_password.txt" # (Optional) File-backed secret for Redis auth
+ttl_secs = 300
+timeout_ms = 200
+```
+
+ระบบยังรองรับการ override ผ่าน environment variables เช่น:
+
+```bash
+NDID_REDIS__ENABLED=true
+NDID_REDIS__URL=redis://127.0.0.1:6379/
+NDID_REDIS__TTL_SECS=300
+NDID_REDIS__TIMEOUT_MS=200
 ```
 
 ---

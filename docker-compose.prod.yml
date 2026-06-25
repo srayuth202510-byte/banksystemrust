@@ -1,0 +1,67 @@
+services:
+  ndid-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ndid-gateway
+    ports:
+      - "8080:8080"
+      - "4433:4433/udp"
+      - "8443:8443"
+    environment:
+      - NDID_ENV=production
+      - RUST_LOG=${RUST_LOG:-info}
+      - NDID_SERVER__HOST=0.0.0.0
+      - NDID_SERVER__PORT=8080
+      - NDID_BLOCKCHAIN__ENDPOINT=http://ndid-blockchain:9933
+      - NDID_NETWORK__CERT_PATH=/run/secrets/gateway_tls_cert
+      - NDID_NETWORK__KEY_PATH=/run/secrets/gateway_tls_key
+      - NDID_NETWORK__CA_CERT_PATH=/run/secrets/gateway_ca_cert
+      - NDID_REDIS__ENABLED=true
+      - NDID_REDIS__URL=${NDID_REDIS_URL:?set NDID_REDIS_URL to a rediss:// endpoint}
+      - NDID_REDIS__USERNAME=${NDID_REDIS_USERNAME:-default}
+      - NDID_REDIS__PASSWORD_FILE=/run/secrets/redis_password
+    secrets:
+      - gateway_tls_cert
+      - gateway_tls_key
+      - gateway_ca_cert
+      - redis_password
+    restart: unless-stopped
+    depends_on:
+      ndid-blockchain:
+        condition: service_started
+    networks:
+      - ndid-net
+
+  ndid-blockchain:
+    image: parity/substrate:latest
+    container_name: ndid-blockchain
+    command: [
+      "--dev",
+      "--rpc-external",
+      "--rpc-cors", "all",
+      "--ws-external",
+      "--base-path", "/data"
+    ]
+    volumes:
+      - blockchain-data:/data
+    restart: unless-stopped
+    networks:
+      - ndid-net
+
+volumes:
+  blockchain-data:
+
+secrets:
+  gateway_tls_cert:
+    file: ./secrets/prod/gateway.crt
+  gateway_tls_key:
+    file: ./secrets/prod/gateway.key
+  gateway_ca_cert:
+    file: ./secrets/prod/ca.crt
+  redis_password:
+    file: ./secrets/prod/redis_password.txt
+
+networks:
+  ndid-net:
+    driver: bridge
