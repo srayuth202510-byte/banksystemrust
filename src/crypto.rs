@@ -40,9 +40,9 @@ pub enum CryptoError {
 // คู่กุญแจ ED25519 สำหรับการลงนามดิจิทัล (secret_key ถูกล้างเมื่อ Drop ด้วย Zeroize)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyPair {
-    pub public_key: Vec<u8>,  // กุญแจสาธารณะ 32 ไบต์
+    pub public_key: Vec<u8>, // กุญแจสาธารณะ 32 ไบต์
     #[serde(skip)]
-    secret_key: Vec<u8>,       // กุญแจส่วนตัว (ไม่ถูก serialize เพื่อความปลอดภัย)
+    secret_key: Vec<u8>, // กุญแจส่วนตัว (ไม่ถูก serialize เพื่อความปลอดภัย)
 }
 
 impl From<ed25519_dalek::SignatureError> for CryptoError {

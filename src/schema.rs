@@ -16,18 +16,18 @@ use crate::redis_cache::{CachedTransactionStatus, RedisCache};
 // ประเภท GraphQL สำหรับแสดงสถานะข้อมูลประจำตัว
 #[derive(SimpleObject, Clone)]
 pub struct IdentityStatusGql {
-    pub request_id: String,       // รหัสคำขอ
-    pub status: String,           // สถานะ (Pending, Approved, Rejected)
-    pub active_protocol: String,  // โปรโตคอลที่ใช้งาน (QUIC/TCP)
+    pub request_id: String,      // รหัสคำขอ
+    pub status: String,          // สถานะ (Pending, Approved, Rejected)
+    pub active_protocol: String, // โปรโตคอลที่ใช้งาน (QUIC/TCP)
 }
 
 // ประเภท GraphQL สำหรับผลตอบกลับการยื่น KYC
 #[derive(SimpleObject, Clone)]
 pub struct KycResponse {
-    pub request_id: String,       // รหัสธุรกรรม
-    pub identity_hash: String,    // ค่าแฮชของข้อมูลประจำตัว
-    pub bank_code: String,        // รหัสธนาคาร
-    pub message: String,          // ข้อความสถานะ
+    pub request_id: String,    // รหัสธุรกรรม
+    pub identity_hash: String, // ค่าแฮชของข้อมูลประจำตัว
+    pub bank_code: String,     // รหัสธนาคาร
+    pub message: String,       // ข้อความสถานะ
 }
 
 // รากของ Query GraphQL - สำหรับอ่านข้อมูล

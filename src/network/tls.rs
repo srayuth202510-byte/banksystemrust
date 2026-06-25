@@ -23,8 +23,8 @@ pub enum TlsError {
 
 // บริบท TLS สำหรับจัดการใบรับรองและกุญแจ (ใช้ร่วมกับ QUIC และ TCP/TLS)
 pub struct TlsContext {
-    pub certs: Vec<CertificateDer<'static>>,   // ใบรับรองของเซิร์ฟเวอร์
-    key: PrivateKeyDer<'static>,                // กุญแจส่วนตัว (ไม่เปิดเผย)
+    pub certs: Vec<CertificateDer<'static>>, // ใบรับรองของเซิร์ฟเวอร์
+    key: PrivateKeyDer<'static>,             // กุญแจส่วนตัว (ไม่เปิดเผย)
     pub ca_certs: Vec<CertificateDer<'static>>, // ใบรับรอง CA สำหรับตรวจสอบ
 }
 

@@ -38,8 +38,8 @@ pub enum NetworkError {
 // โปรโตคอลที่ใช้ในการสื่อสาร P2P
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Protocol {
-    Quic,  // QUIC (0-RTT) - โปรโตคอลหลักความเร็วสูง
-    Tcp,   // TCP + TLS 1.3 - ตัวสำรองเมื่อ QUIC ไม่พร้อมใช้งาน
+    Quic, // QUIC (0-RTT) - โปรโตคอลหลักความเร็วสูง
+    Tcp,  // TCP + TLS 1.3 - ตัวสำรองเมื่อ QUIC ไม่พร้อมใช้งาน
 }
 
 // แสดงชื่อโปรโตคอลในรูปแบบข้อความ
@@ -73,9 +73,9 @@ impl std::fmt::Debug for ConnectionStream {
 // ช่องทางการสื่อสารที่เก็บทั้งโปรโตคอลและสตรีมข้อมูล
 #[derive(Debug)]
 pub struct NetworkChannel {
-    pub protocol: Protocol,           // โปรโตคอลที่ใช้งาน (Quic/Tcp)
-    pub addr: String,                 // ที่อยู่ของ peer
-    pub stream: Option<ConnectionStream>,  // สตรีมเชื่อมต่อ (None = ไม่ได้เชื่อมต่อ)
+    pub protocol: Protocol,               // โปรโตคอลที่ใช้งาน (Quic/Tcp)
+    pub addr: String,                     // ที่อยู่ของ peer
+    pub stream: Option<ConnectionStream>, // สตรีมเชื่อมต่อ (None = ไม่ได้เชื่อมต่อ)
 }
 
 #[async_trait::async_trait]
