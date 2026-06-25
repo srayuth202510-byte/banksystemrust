@@ -5,11 +5,13 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
+// การเชื่อมต่อ QUIC (Quick UDP Internet Connections) ด้วยไลบรารี Quinn
 use std::net::SocketAddr;
 
 use crate::network::{NetworkChannel, NetworkError, Protocol};
 use tracing::{info, warn};
 
+// เชื่อมต่อ QUIC ไปยังเซิร์ฟเวอร์ปลายทาง
 pub async fn connect_quic(
     addr: &str,
     config: &quinn::ClientConfig,
@@ -50,6 +52,7 @@ pub async fn connect_quic(
     })
 }
 
+// เริ่มต้นเซิร์ฟเวอร์ QUIC สำหรับรับการเชื่อมต่อ
 pub async fn start_quic_server(
     bind_addr: &str,
     config: quinn::ServerConfig,
@@ -65,6 +68,7 @@ pub async fn start_quic_server(
     Ok(endpoint)
 }
 
+// จัดการการเชื่อมต่อ QUIC ขาเข้า - รับข้อมูลและตอบกลับ
 pub async fn handle_quic_connection(connection: quinn::Connection) {
     let remote = connection.remote_address();
     info!(remote = %remote, "QUIC connection accepted");

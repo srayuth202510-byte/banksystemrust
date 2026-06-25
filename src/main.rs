@@ -5,6 +5,7 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
+// นำเข้าไลบรารีมาตรฐานสำหรับจัดการเส้นทางไฟล์
 use std::path::PathBuf;
 
 use async_graphql::{EmptySubscription, http::GraphiQLSource};
@@ -37,6 +38,7 @@ use banksystemrust::p2p_quic::P2pNode;
 use banksystemrust::redis_cache::RedisCache;
 use banksystemrust::schema::{MutationRoot, QueryRoot};
 
+// โครงสร้างสำหรับรับพารามิเตอร์จาก command line (CLI)
 #[derive(Parser)]
 #[command(name = "ndid-gateway", version, about = "NDID Banking System Gateway")]
 struct Cli {
@@ -44,10 +46,12 @@ struct Cli {
     config: String,
 }
 
+// แสดงหน้า GraphQL Playground สำหรับทดสอบ API
 async fn graphiql() -> impl IntoResponse {
     Html(GraphiQLSource::build().endpoint("/graphql").finish())
 }
 
+// โครงสร้างสำหรับจัดการ Rate Limit (จำกัดจำนวน request ต่อ IP)
 #[derive(Clone)]
 struct RateLimitState {
     redis: std::sync::Arc<RedisCache>,
@@ -55,6 +59,7 @@ struct RateLimitState {
     limit: u64,
 }
 
+// Middleware สำหรับจำกัดจำนวนคำขอดู transaction ต่อ IP
 async fn per_ip_rate_limiter(
     ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
     Extension(state): Extension<RateLimitState>,
@@ -79,12 +84,15 @@ async fn per_ip_rate_limiter(
     };
 
     if !allowed {
+        // ส่งกลับ HTTP 429 Too Many Requests ถ้าเกินขีดจำกัด
         return Err(StatusCode::TOO_MANY_REQUESTS);
     }
 
+    // อนุญาตให้ดำเนินการต่อ
     Ok(next.run(req).await)
 }
 
+// ตัวจัดการคำขอ GraphQL หลัก
 async fn graphql_handler(
     schema: State<async_graphql::Schema<QueryRoot, MutationRoot, EmptySubscription>>,
     req: GraphQLRequest,
@@ -92,10 +100,12 @@ async fn graphql_handler(
     schema.execute(req.into_inner()).await.into()
 }
 
+// ปลายทางสำหรับตรวจสอบสถานะระบบ (Health Check)
 async fn health() -> impl IntoResponse {
     "OK"
 }
 
+// ปลายทางสำหรับดึงข้อมูลเมตริกของระบบ (Prometheus)
 async fn metrics_handler() -> impl IntoResponse {
     match banksystemrust::metrics::gather_metrics() {
         Ok(metrics) => (StatusCode::OK, metrics),
@@ -106,6 +116,7 @@ async fn metrics_handler() -> impl IntoResponse {
     }
 }
 
+// สร้างสัญญาณปิดระบบ (Ctrl+C / SIGTERM) สำหรับ graceful shutdown
 fn create_shutdown_signal() -> (
     broadcast::Sender<()>,
     impl std::future::Future<Output = ()> + Send + 'static,
@@ -141,6 +152,7 @@ fn create_shutdown_signal() -> (
     (tx, shutdown_future)
 }
 
+// เริ่มต้นเซิร์ฟเวอร์ QUIC สำหรับรับการเชื่อมต่อ P2P แบบความเร็วสูง
 async fn start_quic_server(
     config: &AppConfig,
     tls: &TlsContext,
@@ -191,8 +203,10 @@ async fn start_quic_server(
 
 #[tokio::main]
 async fn main() {
+    // แยกวิเคราะห์พารามิเตอร์จาก command line
     let cli = Cli::parse();
 
+    // โหลดการตั้งค่าระบบจากไฟล์ config
     let config = AppConfig::load(Some(PathBuf::from(&cli.config))).unwrap_or_else(|e| {
         eprintln!("Failed to load config: {e}");
         std::process::exit(1);
@@ -208,6 +222,7 @@ async fn main() {
     let tracer = tracer_provider.tracer("ndid-gateway");
     let telemetry_layer = tracing_opentelemetry::layer().with_tracer(tracer);
 
+    // กำหนดค่าระบบการติดตาม (Tracing) และ OpenTelemetry
     let subscriber = tracing_subscriber::Registry::default()
         .with(
             EnvFilter::try_from_default_env()
@@ -226,11 +241,13 @@ async fn main() {
         "Blockchain configured"
     );
 
+    // ตรวจสอบโหมดการทำงาน (Production หรือ Development)
     let production_mode = matches!(
         std::env::var("NDID_ENV"),
         Ok(value) if value.eq_ignore_ascii_case("production")
     );
 
+    // โหลดหรือสร้าง TLS Certificate สำหรับการเข้ารหัสการสื่อสาร
     let tls = if let (Some(cert_path), Some(key_path)) =
         (&config.network.cert_path, &config.network.key_path)
     {
@@ -258,6 +275,7 @@ async fn main() {
         ctx
     };
 
+    // สร้างคู่กุญแจ ED25519 สำหรับการลงนามธุรกรรม
     let keypair = match KeyPair::generate() {
         Ok(kp) => {
             info!("Crypto keys generated successfully");
@@ -269,6 +287,7 @@ async fn main() {
         }
     };
 
+    // สร้างโหนด P2P สำหรับการสื่อสารระหว่างธนาคาร
     let mut p2p_node = P2pNode::new(config.bank_code.clone(), keypair, tls.clone());
     p2p_node = p2p_node
         .with_load_balancer(config.network.load_balancer.strategy.clone())
@@ -280,19 +299,21 @@ async fn main() {
         p2p_node.add_peer(peer.clone());
     }
 
+    // สร้างไคลเอนต์สำหรับเชื่อมต่อกับบล็อกเชน Substrate
     let blockchain_client = std::sync::Arc::new(
         BlockchainClient::new(config.blockchain.clone()).unwrap_or_else(|e| {
             error!(error = %e, "Failed to initialize blockchain client");
             std::process::exit(1);
         }),
     );
+    // สร้างระบบแคช Redis สำหรับเก็บสถานะธุรกรรม
     let redis_cache =
         std::sync::Arc::new(RedisCache::new(config.redis.clone()).unwrap_or_else(|e| {
             error!(error = %e, "Failed to initialize Redis cache");
             std::process::exit(1);
         }));
 
-    // Background Retry Worker for Substrate node
+    // ตัวทำงานพื้นหลังสำหรับส่งธุรกรรมที่ค้างอยู่ในคิวไปยัง Substrate node ซ้ำ
     let worker_client = blockchain_client.clone();
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
@@ -302,12 +323,14 @@ async fn main() {
         }
     });
 
+    // สร้าง Schema GraphQL สำหรับ API Gateway
     let schema = async_graphql::Schema::build(QueryRoot, MutationRoot, EmptySubscription)
         .data(p2p_node)
         .data(blockchain_client)
         .data(redis_cache.clone())
         .finish();
 
+    // สร้างสัญญาณ shutdown และเริ่มเซิร์ฟเวอร์ QUIC + TCP
     let (shutdown_tx, shutdown_future) = create_shutdown_signal();
     let quic_shutdown_rx = shutdown_tx.subscribe();
     let tcp_shutdown_rx = shutdown_tx.subscribe();
@@ -330,6 +353,7 @@ async fn main() {
         }
     });
 
+    // กำหนดค่า Router สำหรับ HTTP (Axum) พร้อม Middleware
     let app = Router::new()
         .route(
             &config.server.graphql_endpoint,
@@ -358,6 +382,7 @@ async fn main() {
     let addr = format!("{}:{}", config.server.host, config.server.port);
     info!(addr = %addr, "GraphQL Gateway starting");
 
+    // เริ่มต้น HTTP Server (Axum) ที่พอร์ตที่กำหนด
     let listener = TcpListener::bind(&addr).await.unwrap_or_else(|e| {
         error!(error = %e, "Failed to bind to {addr}");
         std::process::exit(1);

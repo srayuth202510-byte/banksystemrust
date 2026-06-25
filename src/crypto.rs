@@ -5,6 +5,7 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
+// นำเข้าไลบรารีเข้ารหัส AES-GCM และ ED25519
 use aes_gcm::aead::Aead;
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
@@ -17,6 +18,7 @@ use zeroize::Zeroize;
 #[cfg(feature = "hsm")]
 use pkcs11::types::*;
 
+// ข้อผิดพลาดทางการเข้ารหัส (Signing, Verification, Encryption, Decryption, HSM)
 #[derive(Debug, Error)]
 pub enum CryptoError {
     #[error("signing failed: {0}")]
@@ -35,11 +37,12 @@ pub enum CryptoError {
     HsmError(String),
 }
 
+// คู่กุญแจ ED25519 สำหรับการลงนามดิจิทัล (secret_key ถูกล้างเมื่อ Drop ด้วย Zeroize)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyPair {
-    pub public_key: Vec<u8>,
+    pub public_key: Vec<u8>,  // กุญแจสาธารณะ 32 ไบต์
     #[serde(skip)]
-    secret_key: Vec<u8>,
+    secret_key: Vec<u8>,       // กุญแจส่วนตัว (ไม่ถูก serialize เพื่อความปลอดภัย)
 }
 
 impl From<ed25519_dalek::SignatureError> for CryptoError {
@@ -56,6 +59,7 @@ impl Drop for KeyPair {
 }
 
 impl KeyPair {
+    // สร้างคู่กุญแจ ED25519 ใหม่ด้วย Random Secure Seed
     pub fn generate() -> Result<Self, CryptoError> {
         let mut secret_bytes = [0u8; 32];
         use rand::RngCore;
@@ -69,6 +73,7 @@ impl KeyPair {
         })
     }
 
+    // กู้คืนคู่กุญแจจากไบต์ของกุญแจส่วนตัวและกุญแจสาธารณะ
     pub fn from_bytes(secret: &[u8], public: &[u8]) -> Result<Self, CryptoError> {
         let _signing = SigningKey::from_bytes(
             secret
@@ -94,6 +99,7 @@ pub struct SignedPayload {
     pub public_key: Vec<u8>,
 }
 
+// ลงนามข้อมูลด้วยกุญแจส่วนตัว ED25519
 pub fn sign(payload: &[u8], keypair: &KeyPair) -> Result<SignedPayload, CryptoError> {
     let signing_key = SigningKey::from_bytes(
         keypair
@@ -110,6 +116,7 @@ pub fn sign(payload: &[u8], keypair: &KeyPair) -> Result<SignedPayload, CryptoEr
     })
 }
 
+// ตรวจสอบลายเซ็นดิจิทัลด้วยกุญแจสาธารณะ
 pub fn verify(signed: &SignedPayload) -> Result<bool, CryptoError> {
     let verifying_key = VerifyingKey::from_bytes(
         signed
@@ -123,6 +130,7 @@ pub fn verify(signed: &SignedPayload) -> Result<bool, CryptoError> {
     Ok(verifying_key.verify(&signed.payload, &signature).is_ok())
 }
 
+// คำนวณค่าแฮช SHA-256 ของข้อมูล
 pub fn hash(data: &[u8]) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(data);
@@ -140,6 +148,7 @@ pub struct EncryptedPayload {
     pub nonce: Vec<u8>,
 }
 
+// เข้ารหัสข้อมูลด้วย AES-256-GCM พร้อม Nonce สุ่ม
 pub fn encrypt(plaintext: &[u8], key: &[u8; 32]) -> Result<EncryptedPayload, CryptoError> {
     let cipher =
         Aes256Gcm::new_from_slice(key).map_err(|e| CryptoError::EncryptionFailed(e.to_string()))?;
@@ -154,6 +163,7 @@ pub fn encrypt(plaintext: &[u8], key: &[u8; 32]) -> Result<EncryptedPayload, Cry
     })
 }
 
+// ถอดรหัสข้อมูล AES-256-GCM
 pub fn decrypt(encrypted: &EncryptedPayload, key: &[u8; 32]) -> Result<Vec<u8>, CryptoError> {
     let cipher =
         Aes256Gcm::new_from_slice(key).map_err(|e| CryptoError::DecryptionFailed(e.to_string()))?;
@@ -163,6 +173,7 @@ pub fn decrypt(encrypted: &EncryptedPayload, key: &[u8; 32]) -> Result<Vec<u8>, 
         .map_err(|e| CryptoError::DecryptionFailed(e.to_string()))
 }
 
+// โมดูล HSM (Hardware Security Module) สำหรับการลงนามด้วยอุปกรณ์ฮาร์ดแวร์ PKCS#11
 #[cfg(feature = "hsm")]
 pub mod hsm {
     use super::*;

@@ -9,6 +9,7 @@ pub mod quic_channel;
 pub mod tcp_channel;
 pub mod tls;
 
+// โมดูลเครือข่าย P2P รองรับทั้ง QUIC (default) และ TCP/TLS 1.3 (fallback)
 use thiserror::Error;
 use tokio::time::{Duration, timeout};
 use tracing::{info, warn};
@@ -17,6 +18,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use self::tls::TlsContext;
 
+// ข้อผิดพลาดเกี่ยวกับเครือข่าย (ทั้ง QUIC และ TCP/TLS)
 #[derive(Debug, Error)]
 pub enum NetworkError {
     #[error("quic connection failed: {0}")]
@@ -33,12 +35,14 @@ pub enum NetworkError {
     ConnectionLost(String),
 }
 
+// โปรโตคอลที่ใช้ในการสื่อสาร P2P
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Protocol {
-    Quic,
-    Tcp,
+    Quic,  // QUIC (0-RTT) - โปรโตคอลหลักความเร็วสูง
+    Tcp,   // TCP + TLS 1.3 - ตัวสำรองเมื่อ QUIC ไม่พร้อมใช้งาน
 }
 
+// แสดงชื่อโปรโตคอลในรูปแบบข้อความ
 impl std::fmt::Display for Protocol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -48,6 +52,7 @@ impl std::fmt::Display for Protocol {
     }
 }
 
+// ประเภทของการเชื่อมต่อ (QUIC หรือ TCP/TLS)
 pub enum ConnectionStream {
     Quic {
         connection: quinn::Connection,
@@ -65,14 +70,16 @@ impl std::fmt::Debug for ConnectionStream {
     }
 }
 
+// ช่องทางการสื่อสารที่เก็บทั้งโปรโตคอลและสตรีมข้อมูล
 #[derive(Debug)]
 pub struct NetworkChannel {
-    pub protocol: Protocol,
-    pub addr: String,
-    pub stream: Option<ConnectionStream>,
+    pub protocol: Protocol,           // โปรโตคอลที่ใช้งาน (Quic/Tcp)
+    pub addr: String,                 // ที่อยู่ของ peer
+    pub stream: Option<ConnectionStream>,  // สตรีมเชื่อมต่อ (None = ไม่ได้เชื่อมต่อ)
 }
 
 #[async_trait::async_trait]
+// คุณลักษณะ (Trait) สำหรับช่องทางการเชื่อมต่อแบบ async
 pub trait ConnectionChannel: Send + Sync {
     async fn connect(&self, addr: &str, tls: &TlsContext) -> Result<NetworkChannel, NetworkError>;
     async fn send(&self, data: &[u8]) -> Result<(), NetworkError>;
@@ -179,6 +186,7 @@ impl ConnectionChannel for NetworkChannel {
     }
 }
 
+// ประมวลผลข้อความ P2P ที่ได้รับ (ตรวจสอบลายเซ็น, ส่ง ACK หรือ ERROR)
 pub fn process_p2p_message(buf: &[u8]) -> String {
     use crate::crypto;
     use crate::p2p_quic::P2pMessage;
@@ -219,6 +227,7 @@ pub fn process_p2p_message(buf: &[u8]) -> String {
     }
 }
 
+// เชื่อมต่อกับ peer โดยลอง QUIC ก่อน ถ้าไม่ได้ให้ Fallback เป็น TCP/TLS
 pub async fn connect_with_fallback(
     addr: &str,
     tls: &TlsContext,
@@ -250,6 +259,7 @@ pub async fn connect_with_fallback(
     }
 }
 
+// ฟังก์ชันเชื่อมต่อ TCP/TLS เมื่อ QUIC ล้มเหลว
 async fn fallback_to_tcp(
     addr: &str,
     tls: &TlsContext,

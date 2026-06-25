@@ -5,6 +5,7 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
+// โมดูล Redis Cache สำหรับแคชสถานะธุรกรรมและ Rate Limiting
 use redis::AsyncCommands;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,7 @@ use tracing::{debug, warn};
 use crate::blockchain::TxStatus;
 use crate::config::RedisConfig;
 
+// ข้อผิดพลาดในการเชื่อมต่อหรือใช้งาน Redis cache
 #[derive(Debug, Error)]
 pub enum RedisCacheError {
     #[error("redis client error: {0}")]
@@ -27,6 +29,7 @@ pub enum RedisCacheError {
     SecretLoad(String),
 }
 
+// สถานะธุรกรรมที่แคชไว้ใน Redis
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CachedTransactionStatus {
     pub request_id: String,
@@ -41,6 +44,7 @@ pub struct RedisCache {
 }
 
 impl RedisCache {
+    // สร้าง Redis cache ใหม่ (ถ้า disabled จะไม่เชื่อมต่อ)
     pub fn new(config: RedisConfig) -> Result<Self, RedisCacheError> {
         if !config.enabled {
             return Ok(Self {
@@ -64,6 +68,7 @@ impl RedisCache {
         self.client.is_some()
     }
 
+    // อ่านสถานะธุรกรรมจาก Redis cache
     pub async fn get_transaction_status(
         &self,
         request_id: &str,
@@ -85,6 +90,7 @@ impl RedisCache {
         }
     }
 
+    // บันทึกสถานะธุรกรรมลง Redis cache พร้อม TTL
     pub async fn set_transaction_status(
         &self,
         entry: &CachedTransactionStatus,
@@ -116,6 +122,7 @@ impl RedisCache {
             })
     }
 
+    // ตรวจสอบ Rate Limit ตาม IP (ใช้ Redis INCR + EXPIRE)
     pub async fn check_rate_limit(&self, ip: &str, limit: u64) -> Result<bool, RedisCacheError> {
         let Some(client) = &self.client else {
             return Ok(true); // Always allow if Redis is disabled (fallback handled in app)

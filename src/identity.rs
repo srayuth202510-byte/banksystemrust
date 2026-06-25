@@ -5,11 +5,13 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
+// นำเข้าไลบรารีสำหรับ Serialize/Deserialize และการจัดการข้อผิดพลาด
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::crypto;
 
+// ข้อผิดพลาดที่เกี่ยวกับข้อมูลประจำตัว NDID
 #[derive(Debug, Error)]
 pub enum IdentityError {
     #[error("validation failed: {0}")]
@@ -24,6 +26,7 @@ pub enum IdentityError {
     Crypto(#[from] crypto::CryptoError),
 }
 
+// สถานะของข้อมูลประจำตัว (Pending/Approved/Rejected/Revoked)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum IdentityStatus {
     Pending,
@@ -32,16 +35,18 @@ pub enum IdentityStatus {
     Revoked,
 }
 
+// บันทึกข้อมูลประจำตัวบนบล็อกเชน
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IdentityRecord {
-    pub request_id: String,
-    pub status: IdentityStatus,
-    pub identity_hash: String,
-    pub timestamp: i64,
-    pub bank_code: String,
-    pub active_protocol: String,
+    pub request_id: String,        // รหัสอ้างอิงคำขอ
+    pub status: IdentityStatus,    // สถานะปัจจุบัน
+    pub identity_hash: String,     // ค่าแฮช SHA-256 ของข้อมูล
+    pub timestamp: i64,            // เวลาที่สร้าง (Unix timestamp)
+    pub bank_code: String,         // รหัสธนาคารเจ้าของข้อมูล
+    pub active_protocol: String,   // โปรโตคอลที่ใช้ส่งข้อมูล (QUIC/TCP)
 }
 
+// ข้อมูล KYC (Know Your Customer) จากลูกค้าธนาคาร
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KycData {
     pub national_id: String,
@@ -52,6 +57,7 @@ pub struct KycData {
 }
 
 impl KycData {
+    // คำนวณค่าแฮช SHA-256 ของข้อมูล KYC เพื่อใช้เป็นลายเซ็นประจำตัว
     pub fn compute_hash(&self) -> Result<String, IdentityError> {
         let serialized = serde_json::to_vec(self)
             .map_err(|e| IdentityError::ValidationFailed(format!("serialization failed: {e}")))?;
@@ -59,6 +65,7 @@ impl KycData {
         Ok(hex::encode(hash))
     }
 
+    // ปิดบังข้อมูลส่วนบุคคล (PII) โดยคงเฉพาะแฮชและข้อมูลที่ไม่ระบุตัวตน
     pub fn anonymize(&self) -> Result<AnonymizedKyc, IdentityError> {
         Ok(AnonymizedKyc {
             identity_hash: self.compute_hash()?,
@@ -75,6 +82,7 @@ pub struct AnonymizedKyc {
     pub timestamp: i64,
 }
 
+// ตรวจสอบความถูกต้องของค่าแฮชโดยใช้ Constant-Time Comparison (ป้องกัน timing attack)
 pub fn validate_identity_hash(kyc: &KycData, expected_hash: &str) -> Result<bool, IdentityError> {
     let actual_hash = kyc.compute_hash()?;
     use subtle::ConstantTimeEq;
@@ -84,6 +92,7 @@ pub fn validate_identity_hash(kyc: &KycData, expected_hash: &str) -> Result<bool
         .into())
 }
 
+// สร้างบันทึกข้อมูลประจำตัวในระบบ NDID
 pub fn create_identity_record(
     request_id: String,
     kyc: &KycData,

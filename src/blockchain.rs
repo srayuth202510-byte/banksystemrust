@@ -5,6 +5,7 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
+// คริปโตเคอเรนซีและบล็อกเชน - เชื่อมต่อ Substrate node สำหรับบันทึกธุรกรรม
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::time::{Duration, timeout};
@@ -13,6 +14,7 @@ use tracing::{error, info, warn};
 pub use crate::config::BlockchainConfig;
 use crate::crypto;
 
+// ข้อผิดพลาดที่เกี่ยวกับบล็อกเชน Substrate
 #[derive(Debug, Error)]
 pub enum BlockchainError {
     #[error("node unreachable: {0}")]
@@ -33,6 +35,7 @@ pub enum BlockchainError {
     DatabaseError(String),
 }
 
+// ธุรกรรมบล็อกเชนสำหรับบันทึกข้อมูล KYC
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockchainTransaction {
     pub tx_id: String,
@@ -43,6 +46,7 @@ pub struct BlockchainTransaction {
     pub public_key: Vec<u8>,
 }
 
+// ใบเสร็จรับเงินธุรกรรมจากบล็อกเชน
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionReceipt {
     pub tx_id: String,
@@ -51,6 +55,7 @@ pub struct TransactionReceipt {
     pub status: TxStatus,
 }
 
+// สถานะของธุรกรรมบนบล็อกเชน
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TxStatus {
     Pending,
@@ -81,6 +86,7 @@ pub struct SubstrateRpcError {
     pub message: String,
 }
 
+// ไคลเอนต์หลักสำหรับเชื่อมต่อและโต้ตอบกับ Substrate blockchain node
 pub struct BlockchainClient {
     config: BlockchainConfig,
     db: rocksdb::DB,
@@ -89,6 +95,7 @@ pub struct BlockchainClient {
 }
 
 impl BlockchainClient {
+    // สร้างไคลเอนต์บล็อกเชน พร้อม RocksDB สำหรับ queue ธุรกรรม
     pub fn new(config: BlockchainConfig) -> Result<Self, BlockchainError> {
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
@@ -136,6 +143,7 @@ impl BlockchainClient {
         })
     }
 
+    // สร้างธุรกรรมบล็อกเชนพร้อมลงนามดิจิทัลด้วย ED25519
     pub fn create_transaction(
         &self,
         identity_hash: String,
@@ -156,6 +164,7 @@ impl BlockchainClient {
         })
     }
 
+    // ส่งธุรกรรมไปยัง Substrate node (Fallback เป็น queue ใน RocksDB ถ้า node ไม่พร้อม)
     pub async fn submit(
         &self,
         tx: BlockchainTransaction,
@@ -186,6 +195,7 @@ impl BlockchainClient {
         }
     }
 
+    // ส่งธุรกรรมผ่าน RPC ไปยัง Substrate node (ใช้ author_submitExtrinsic)
     async fn send_to_node(
         &self,
         tx: &BlockchainTransaction,
@@ -247,10 +257,12 @@ impl BlockchainClient {
         }
     }
 
+    // จำนวนธุรกรรมที่รอส่งในคิว
     pub fn queue_len(&self) -> usize {
         self.db.iterator(rocksdb::IteratorMode::Start).count()
     }
 
+    // นำธุรกรรมทั้งหมดออกจากคิว
     pub fn drain_queue(&self) -> Vec<BlockchainTransaction> {
         let mut drained = Vec::new();
         for (k, v) in self.db.iterator(rocksdb::IteratorMode::Start).flatten() {
@@ -262,6 +274,7 @@ impl BlockchainClient {
         drained
     }
 
+    // ส่งธุรกรรมที่ค้างอยู่ในคิวทั้งหมดอีกครั้ง (เรียกเป็นระยะโดย background worker)
     pub async fn retry_all_queued(&self) {
         let mut to_retry = Vec::new();
         for (k, v) in self.db.iterator(rocksdb::IteratorMode::Start).flatten() {
@@ -297,6 +310,7 @@ impl BlockchainClient {
         }
     }
 
+    // ตรวจสอบสถานะธุรกรรม (อยู่ในคิว = Queued, ไม่อยู่ = Finalized)
     pub fn get_transaction_status(&self, tx_id: &str) -> Result<TxStatus, BlockchainError> {
         match self.db.get(tx_id.as_bytes()) {
             Ok(Some(_)) => Ok(TxStatus::Queued),

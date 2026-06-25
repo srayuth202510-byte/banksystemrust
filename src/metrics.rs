@@ -5,16 +5,19 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
+// โมดูลรวบรวมเมตริกสำหรับ Prometheus (KYC requests, P2P messages, blockchain retries)
 use prometheus::{
     Encoder, IntCounterVec, Registry, TextEncoder, register_int_counter_vec_with_registry,
 };
 use std::sync::OnceLock;
 
+// รีจิสทรีส่วนกลางสำหรับเมตริก Prometheus
 pub fn registry() -> &'static Registry {
     static REGISTRY: OnceLock<Registry> = OnceLock::new();
     REGISTRY.get_or_init(Registry::new)
 }
 
+// เมตริกนับจำนวนคำขอ KYC แยกตามธนาคารและสถานะ
 pub fn kyc_requests() -> &'static IntCounterVec {
     static KYC_REQUESTS: OnceLock<IntCounterVec> = OnceLock::new();
     KYC_REQUESTS.get_or_init(|| {
@@ -28,6 +31,7 @@ pub fn kyc_requests() -> &'static IntCounterVec {
     })
 }
 
+// เมตริกนับจำนวนข้อความ P2P แยกตามทิศทาง ธนาคาร และสถานะ
 pub fn p2p_messages() -> &'static IntCounterVec {
     static P2P_MESSAGES: OnceLock<IntCounterVec> = OnceLock::new();
     P2P_MESSAGES.get_or_init(|| {
@@ -41,6 +45,7 @@ pub fn p2p_messages() -> &'static IntCounterVec {
     })
 }
 
+// เมตริกนับจำนวนการส่งธุรกรรมบล็อกเชนซ้ำ
 pub fn blockchain_retries() -> &'static IntCounterVec {
     static BLOCKCHAIN_RETRIES: OnceLock<IntCounterVec> = OnceLock::new();
     BLOCKCHAIN_RETRIES.get_or_init(|| {
@@ -54,6 +59,7 @@ pub fn blockchain_retries() -> &'static IntCounterVec {
     })
 }
 
+// รวบรวมเมตริกทั้งหมดในรูปแบบข้อความ Prometheus (text/plain)
 pub fn gather_metrics() -> Result<String, String> {
     // Access metrics to ensure they are registered
     let _ = kyc_requests();

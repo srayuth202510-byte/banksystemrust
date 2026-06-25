@@ -5,6 +5,7 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
+// การเชื่อมต่อ TCP/TLS 1.3 สำหรับ Fallback เมื่อ QUIC ไม่พร้อมใช้งาน
 use crate::network::tls::TlsContext;
 use crate::network::{ConnectionStream, NetworkChannel, NetworkError, Protocol};
 use std::sync::Arc;
@@ -15,6 +16,7 @@ use tokio::time::{Duration, timeout};
 use tokio_rustls::{TlsAcceptor, TlsConnector};
 use tracing::{info, warn};
 
+// เชื่อมต่อ TCP+TLS ไปยังเซิร์ฟเวอร์ปลายทาง
 pub async fn connect_tcp_tls(
     addr: &str,
     tls: &TlsContext,
@@ -52,6 +54,7 @@ pub async fn connect_tcp_tls(
     })
 }
 
+// เริ่มต้นเซิร์ฟเวอร์ TCP+TLS สำหรับรับการเชื่อมต่อ (fallback)
 pub async fn start_tcp_server(
     bind_addr: &str,
     tls: &TlsContext,
@@ -100,6 +103,7 @@ pub async fn start_tcp_server(
     Ok(())
 }
 
+// จัดการการเชื่อมต่อ TCP+TLS ขาเข้า - รับข้อมูลและตอบกลับ
 pub async fn handle_tcp_connection(
     mut tls_stream: tokio_rustls::server::TlsStream<TcpStream>,
     remote: std::net::SocketAddr,

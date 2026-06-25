@@ -1,7 +1,9 @@
+// การทดสอบสมรรถนะ (Benchmarks) สำหรับฟังก์ชันการเข้ารหัส: ED25519, AES-256-GCM, SHA-256
 use banksystemrust::crypto::{KeyPair, decrypt, encrypt, hash_hex, sign, verify};
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use rand::RngCore;
 
+// ทดสอบสมรรถนะการลงนามและตรวจสอบลายเซ็น ED25519
 fn bench_ed25519(c: &mut Criterion) {
     let mut group = c.benchmark_group("ED25519");
     let keypair = KeyPair::generate().unwrap();
@@ -16,6 +18,7 @@ fn bench_ed25519(c: &mut Criterion) {
     group.finish();
 }
 
+// ทดสอบสมรรถนะการเข้ารหัสและถอดรหัส AES-256-GCM สำหรับ payload 1KB
 fn bench_aes256gcm(c: &mut Criterion) {
     let mut group = c.benchmark_group("AES-256-GCM");
     let mut key = [0u8; 32];
@@ -33,6 +36,7 @@ fn bench_aes256gcm(c: &mut Criterion) {
     group.finish();
 }
 
+// ทดสอบสมรรถนะการแฮช SHA-256 สำหรับข้อมูล KYC
 fn bench_sha256(c: &mut Criterion) {
     let mut group = c.benchmark_group("SHA-256");
     let data = b"{\"national_id\":\"1234567890123\",\"full_name\":\"John Doe\",\"date_of_birth\":\"1990-01-01\",\"bank_code\":\"BBL\",\"timestamp\":1718000000}";

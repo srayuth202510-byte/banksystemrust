@@ -5,6 +5,7 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
+// นำเข้า async-graphql สำหรับนิยาม GraphQL Schema
 use async_graphql::{Context, Object, SimpleObject};
 use tracing::info;
 
@@ -12,25 +13,29 @@ use crate::identity;
 use crate::p2p_quic::P2pNode;
 use crate::redis_cache::{CachedTransactionStatus, RedisCache};
 
+// ประเภท GraphQL สำหรับแสดงสถานะข้อมูลประจำตัว
 #[derive(SimpleObject, Clone)]
 pub struct IdentityStatusGql {
-    pub request_id: String,
-    pub status: String,
-    pub active_protocol: String,
+    pub request_id: String,       // รหัสคำขอ
+    pub status: String,           // สถานะ (Pending, Approved, Rejected)
+    pub active_protocol: String,  // โปรโตคอลที่ใช้งาน (QUIC/TCP)
 }
 
+// ประเภท GraphQL สำหรับผลตอบกลับการยื่น KYC
 #[derive(SimpleObject, Clone)]
 pub struct KycResponse {
-    pub request_id: String,
-    pub identity_hash: String,
-    pub bank_code: String,
-    pub message: String,
+    pub request_id: String,       // รหัสธุรกรรม
+    pub identity_hash: String,    // ค่าแฮชของข้อมูลประจำตัว
+    pub bank_code: String,        // รหัสธนาคาร
+    pub message: String,          // ข้อความสถานะ
 }
 
+// รากของ Query GraphQL - สำหรับอ่านข้อมูล
 pub struct QueryRoot;
 
 #[Object]
 impl QueryRoot {
+    // ตรวจสอบบันทึก NDID จากบล็อกเชน (พร้อม Redis Cache)
     async fn verify_ndid_record(
         &self,
         ctx: &Context<'_>,
@@ -83,6 +88,7 @@ impl QueryRoot {
         })
     }
 
+    // ดึงข้อมูลสถานะประจำตัวตาม request_id
     async fn get_identity(
         &self,
         ctx: &Context<'_>,
@@ -121,10 +127,12 @@ impl QueryRoot {
     }
 }
 
+// รากของ Mutation GraphQL - สำหรับเขียน/แก้ไขข้อมูล
 pub struct MutationRoot;
 
 #[Object]
 impl MutationRoot {
+    // ยื่นข้อมูล KYC (Know Your Customer) ผ่าน P2P และบันทึกลงบล็อกเชน
     async fn submit_kyc(
         &self,
         ctx: &Context<'_>,
@@ -244,6 +252,7 @@ impl MutationRoot {
     }
 }
 
+// แปลงสถานะธุรกรรมเป็นข้อความสถานะข้อมูลประจำตัว
 fn get_identity_status_label(status: &crate::blockchain::TxStatus) -> String {
     match status {
         crate::blockchain::TxStatus::Pending => "Pending".to_string(),
@@ -253,6 +262,7 @@ fn get_identity_status_label(status: &crate::blockchain::TxStatus) -> String {
     }
 }
 
+// แปลงสถานะธุรกรรมเป็นข้อความสำหรับการยืนยัน
 fn verify_status_label(status: &crate::blockchain::TxStatus) -> String {
     match status {
         crate::blockchain::TxStatus::Finalized => "Approved".to_string(),

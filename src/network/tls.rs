@@ -5,10 +5,12 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
+// การจัดการ TLS (certificate, การเข้ารหัส, การกำหนดค่า QUIC + rustls)
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
 use std::sync::Arc;
 use thiserror::Error;
 
+// ข้อผิดพลาดเกี่ยวกับการจัดการ TLS Certificate
 #[derive(Debug, Error)]
 pub enum TlsError {
     #[error("certificate generation failed: {0}")]
@@ -19,10 +21,11 @@ pub enum TlsError {
     InvalidKey(String),
 }
 
+// บริบท TLS สำหรับจัดการใบรับรองและกุญแจ (ใช้ร่วมกับ QUIC และ TCP/TLS)
 pub struct TlsContext {
-    pub certs: Vec<CertificateDer<'static>>,
-    key: PrivateKeyDer<'static>,
-    pub ca_certs: Vec<CertificateDer<'static>>,
+    pub certs: Vec<CertificateDer<'static>>,   // ใบรับรองของเซิร์ฟเวอร์
+    key: PrivateKeyDer<'static>,                // กุญแจส่วนตัว (ไม่เปิดเผย)
+    pub ca_certs: Vec<CertificateDer<'static>>, // ใบรับรอง CA สำหรับตรวจสอบ
 }
 
 impl Clone for TlsContext {
@@ -45,6 +48,7 @@ impl std::fmt::Debug for TlsContext {
 }
 
 impl TlsContext {
+    // สร้างใบรับรองแบบ Self-Signed สำหรับการพัฒนาและทดสอบ
     pub fn generate_self_signed() -> Result<Self, TlsError> {
         let key_pair =
             rcgen::KeyPair::generate().map_err(|e| TlsError::CertGeneration(e.to_string()))?;
@@ -66,6 +70,7 @@ impl TlsContext {
         })
     }
 
+    // โหลดใบรับรองและกุญแจจากไฟล์ (PEM format)
     pub fn load(cert_path: &str, key_path: &str) -> Result<Self, TlsError> {
         let certs = load_certs(cert_path)?;
         let key = load_key(key_path)?;
@@ -76,12 +81,14 @@ impl TlsContext {
         })
     }
 
+    // เพิ่มใบรับรอง CA สำหรับการตรวจสอบไคลเอนต์
     pub fn add_ca_cert(&mut self, path: &str) -> Result<(), TlsError> {
         let certs = load_certs(path)?;
         self.ca_certs.extend(certs);
         Ok(())
     }
 
+    // แปลงเป็น QUIC Server Config สำหรับ Quinn
     pub fn to_quic_server_config(&self) -> Result<quinn::ServerConfig, TlsError> {
         let verifier = if self.ca_certs.is_empty() {
             rustls::server::WebPkiClientVerifier::no_client_auth()
@@ -118,6 +125,7 @@ impl TlsContext {
         Ok(config)
     }
 
+    // แปลงเป็น QUIC Client Config สำหรับ Quinn
     pub fn to_quic_client_config(&self) -> Result<quinn::ClientConfig, TlsError> {
         let provider = rustls::crypto::ring::default_provider();
 
@@ -142,6 +150,7 @@ impl TlsContext {
         Ok(config)
     }
 
+    // แปลงเป็น Rustls Client Config สำหรับ TCP/TLS
     pub fn to_rustls_client_config(&self) -> Result<rustls::ClientConfig, TlsError> {
         let provider = rustls::crypto::ring::default_provider();
 
@@ -159,6 +168,7 @@ impl TlsContext {
         Ok(crypto)
     }
 
+    // แปลงเป็น Rustls Server Config สำหรับ TCP/TLS
     pub fn to_rustls_server_config(&self) -> Result<rustls::ServerConfig, TlsError> {
         let verifier = if self.ca_certs.is_empty() {
             rustls::server::WebPkiClientVerifier::no_client_auth()
@@ -186,6 +196,7 @@ impl TlsContext {
     }
 }
 
+// อ่านใบรับรองจากไฟล์ PEM
 fn load_certs(path: &str) -> Result<Vec<CertificateDer<'static>>, TlsError> {
     let bytes = std::fs::read(path)
         .map_err(|e| TlsError::CertLoading(format!("cannot read {path}: {e}")))?;
@@ -195,6 +206,7 @@ fn load_certs(path: &str) -> Result<Vec<CertificateDer<'static>>, TlsError> {
     Ok(certs)
 }
 
+// อ่านกุญแจส่วนตัวจากไฟล์ PEM
 fn load_key(path: &str) -> Result<PrivateKeyDer<'static>, TlsError> {
     let bytes = std::fs::read(path)
         .map_err(|e| TlsError::CertLoading(format!("cannot read {path}: {e}")))?;

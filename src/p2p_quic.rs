@@ -5,6 +5,7 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
+// โมดูลจัดการโหนด P2P สำหรับการแลกเปลี่ยนข้อมูล KYC ระหว่างธนาคารด้วย QUIC/TCP
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use thiserror::Error;
@@ -15,6 +16,7 @@ use crate::crypto;
 use crate::network;
 use crate::network::{Protocol, tls::TlsContext};
 
+// ข้อผิดพลาดในการสื่อสาร P2P ระหว่างธนาคาร
 #[derive(Debug, Error)]
 pub enum P2pError {
     #[error("network error: {0}")]
@@ -29,6 +31,7 @@ pub enum P2pError {
     TlsError(String),
 }
 
+// ข้อความ P2P สำหรับส่งข้อมูล KYC ระหว่างธนาคาร (ลงนามด้วย ED25519)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct P2pMessage {
     pub from_bank: String,
@@ -51,6 +54,7 @@ pub struct P2pNode {
 }
 
 impl std::fmt::Debug for P2pNode {
+    // ซ่อนข้อมูลสำคัญ (keypair, tls) เมื่อแสดง Debug
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("P2pNode")
             .field("bank_code", &self.bank_code)
@@ -60,6 +64,7 @@ impl std::fmt::Debug for P2pNode {
 }
 
 impl P2pNode {
+    // สร้างโหนด P2P ใหม่ด้วยรหัสธนาคาร คู่กุญแจ และ TLS context
     pub fn new(bank_code: String, keypair: crypto::KeyPair, tls: TlsContext) -> Self {
         Self {
             bank_code,
@@ -73,21 +78,25 @@ impl P2pNode {
         }
     }
 
+    // กำหนดค่า timeout สำหรับการเชื่อมต่อ QUIC และ TCP
     pub fn with_timeouts(mut self, quic: u64, tcp: u64) -> Self {
         self.quic_timeout_ms = quic;
         self.tcp_timeout_ms = tcp;
         self
     }
 
+    // กำหนดกลยุทธ์การกระจายโหลด (Round-Robin หรือ Fanout)
     pub fn with_load_balancer(mut self, load_balancer: LoadBalancerStrategy) -> Self {
         self.load_balancer = load_balancer;
         self
     }
 
+    // เพิ่มที่อยู่ peer สำหรับการสื่อสาร P2P
     pub fn add_peer(&mut self, addr: String) {
         self.peers.push(addr);
     }
 
+    // ส่งข้อมูล KYC ไปยัง peer ธนาคารอื่น พร้อมบันทึกเมตริก
     pub async fn send_kyc(&self, peer_addr: &str, kyc_hash: String) -> Result<Protocol, P2pError> {
         let res = self.send_kyc_inner(peer_addr, kyc_hash).await;
         match &res {
@@ -155,10 +164,12 @@ impl P2pNode {
         Ok(protocol)
     }
 
+    // รายชื่อ peer ที่เชื่อมต่ออยู่
     pub fn peers(&self) -> &[String] {
         &self.peers
     }
 
+    // เลือก peer ตามกลยุทธ์ Load Balancer (Fanout = ส่งทั้งหมด, RoundRobin = สลับกัน)
     pub fn select_peers(&self) -> Vec<String> {
         if self.peers.is_empty() {
             return Vec::new();

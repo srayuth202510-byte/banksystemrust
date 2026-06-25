@@ -5,10 +5,12 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
+// โมดูลจัดการการตั้งค่าระบบ รองรับ TOML + Environment Variables (prefix NDID_)
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;
 
+// ข้อผิดพลาดในการโหลดหรือตรวจสอบการตั้งค่า
 #[derive(Debug, Error)]
 pub enum AppConfigError {
     #[error("{0}")]
@@ -17,6 +19,7 @@ pub enum AppConfigError {
     Config(#[from] config::ConfigError),
 }
 
+// การตั้งค่า Rate Limiting สำหรับป้องกันการโจมตีแบบ DoS
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RateLimitConfig {
     pub requests_per_second: u64,
@@ -34,6 +37,7 @@ impl Default for RateLimitConfig {
     }
 }
 
+// กลยุทธ์การกระจายโหลดสำหรับ P2P (Round-Robin หรือ Fanout)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum LoadBalancerStrategy {
@@ -52,6 +56,7 @@ fn default_tcp_timeout() -> u64 {
     2000
 }
 
+// การตั้งค่า HTTP Server (Axum) และ GraphQL endpoint
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
     pub host: String,
@@ -62,6 +67,7 @@ pub struct ServerConfig {
     pub rate_limit: RateLimitConfig,
 }
 
+// การตั้งค่าเครือข่าย P2P (พอร์ต QUIC/TCP, timeout, peers, TLS)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkConfig {
     pub quic_port: u16,
@@ -81,6 +87,7 @@ pub struct NetworkConfig {
     pub ca_cert_path: Option<String>,
 }
 
+// การตั้งค่าการเชื่อมต่อ Substrate blockchain node
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockchainConfig {
     pub endpoint: String,
@@ -89,6 +96,7 @@ pub struct BlockchainConfig {
     pub db_path: Option<String>,
 }
 
+// การตั้งค่าการเข้ารหัส (รองรับ HSM, ED25519, AES-256-GCM)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CryptoConfig {
     #[serde(default)]
@@ -103,6 +111,7 @@ pub struct CryptoConfig {
     pub encryption_algorithm: String,
 }
 
+// การตั้งค่าระบบบันทึก (Logging) รองรับ JSON format
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoggingConfig {
     pub level: String,
@@ -110,6 +119,7 @@ pub struct LoggingConfig {
     pub directory: String,
 }
 
+// การตั้งค่า Redis Cache สำหรับแคชสถานะธุรกรรม
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RedisConfig {
     #[serde(default)]
@@ -146,6 +156,7 @@ impl Default for RedisConfig {
     }
 }
 
+// การตั้งค่าหลักของระบบ NDID Banking Gateway
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub bank_code: String,
@@ -206,10 +217,12 @@ impl Default for AppConfig {
 }
 
 impl AppConfig {
+    // ตรวจสอบความถูกต้องของการตั้งค่า (ตรวจ Production mode ด้วย)
     pub fn validate(&self) -> Result<(), String> {
         self.validate_with_mode(is_production_mode())
     }
 
+    // ตรวจสอบความถูกต้องของการตั้งค่าแบบละเอียด (ระบุโหมด Production/Development)
     pub fn validate_with_mode(&self, production_mode: bool) -> Result<(), String> {
         if self.bank_code.trim().is_empty() {
             return Err("bank_code cannot be empty".into());
@@ -296,6 +309,7 @@ impl AppConfig {
         Ok(())
     }
 
+    // โหลดการตั้งค่าจากไฟล์ TOML และ Environment Variables (NDID_*)
     pub fn load(path: Option<PathBuf>) -> Result<Self, AppConfigError> {
         let cfg_path = path.unwrap_or_else(|| PathBuf::from("config/default.toml"));
         let settings = config::Config::builder()
@@ -312,6 +326,7 @@ impl AppConfig {
     }
 }
 
+// ตรวจสอบว่า Environment variable NDID_ENV = "production" หรือไม่
 fn is_production_mode() -> bool {
     matches!(
         std::env::var("NDID_ENV"),

@@ -5,6 +5,7 @@
 // บล็อกเชน: Substrate (Private Permissioned Ledger)
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
+// การทดสอบแบบบูรณาการ (Integration Tests) สำหรับระบบ NDID Banking
 use banksystemrust::crypto::KeyPair;
 use banksystemrust::network::quic_channel::start_quic_server;
 use banksystemrust::network::tcp_channel::start_tcp_server;
@@ -14,6 +15,7 @@ use banksystemrust::p2p_quic::{P2pMessage, P2pNode};
 use banksystemrust::redis_cache::RedisCache;
 use tokio::sync::broadcast;
 
+// เริ่มต้นระบบบันทึกสำหรับการทดสอบ (ไม่ซ้ำซ้อน)
 fn init_logging() {
     let _ = tracing_subscriber::fmt()
         .with_env_filter("info,banksystemrust=debug")
@@ -21,6 +23,7 @@ fn init_logging() {
 }
 
 #[tokio::test]
+// ทดสอบการสื่อสารด้วย QUIC ระหว่างธนาคาร
 async fn test_quic_communication() {
     init_logging();
     let tls = TlsContext::generate_self_signed().unwrap();
@@ -58,6 +61,7 @@ async fn test_quic_communication() {
 }
 
 #[tokio::test]
+// ทดสอบการสื่อสารด้วย TCP/TLS (Fallback เมื่อ QUIC ไม่พร้อม)
 async fn test_tcp_fallback_communication() {
     init_logging();
     let tls = TlsContext::generate_self_signed().unwrap();
@@ -90,6 +94,7 @@ async fn test_tcp_fallback_communication() {
 }
 
 #[tokio::test]
+// ทดสอบว่าระบบปฏิเสธข้อความที่ลายเซ็นไม่ถูกต้อง
 async fn test_invalid_signature_rejection() {
     init_logging();
     let tls = TlsContext::generate_self_signed().unwrap();
@@ -136,6 +141,7 @@ async fn test_invalid_signature_rejection() {
 }
 
 #[tokio::test]
+// ทดสอบ GraphQL Flow ครบวงจร: submitKYC -> getIdentity -> verifyNdidRecord
 async fn test_graphql_flow() {
     init_logging();
 
