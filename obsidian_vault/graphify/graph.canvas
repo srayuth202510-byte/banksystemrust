@@ -1,0 +1,1142 @@
+{
+  "nodes": [
+    {
+      "id": "g0",
+      "type": "group",
+      "label": "System Architecture",
+      "x": 0,
+      "y": 0,
+      "width": 880,
+      "height": 620,
+      "color": "1"
+    },
+    {
+      "id": "n_banksystemrust_plan_three_layer_arch",
+      "type": "file",
+      "file": "3-layer system architecture.md",
+      "x": 20,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_bank_node_service",
+      "type": "file",
+      "file": "Bank Node Service.md",
+      "x": 220,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_blockchain_adapter",
+      "type": "file",
+      "file": "Blockchain Adapter.md",
+      "x": 420,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_skill_trigger_words",
+      "type": "file",
+      "file": "Development trigger words.md",
+      "x": 20,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_graphql_api_gateway",
+      "type": "file",
+      "file": "GraphQL API Gateway.md",
+      "x": 220,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_blockchain_rs",
+      "type": "file",
+      "file": "blockchain.rs (Substrate node client).md",
+      "x": 420,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_crypto_rs",
+      "type": "file",
+      "file": "crypto.rs (ED25519 signing + AES-GCM encryption).md",
+      "x": 20,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_identity_rs",
+      "type": "file",
+      "file": "identity.rs (NDID identity data model + SHA-256).md",
+      "x": 220,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_main_rs",
+      "type": "file",
+      "file": "main.rs (Axum + GraphQL Gateway bootstrap).md",
+      "x": 420,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_p2p_quic_rs",
+      "type": "file",
+      "file": "p2p_quic.rs (QUIC connection pool + TCP fallback).md",
+      "x": 20,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_quic_channel_rs",
+      "type": "file",
+      "file": "quic_channel.rs (Quinn QUIC implementation).md",
+      "x": 220,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_schema_rs",
+      "type": "file",
+      "file": "schema.rs (GraphQL Query, Mutation, Subscription).md",
+      "x": 420,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_tcp_channel_rs",
+      "type": "file",
+      "file": "tcp_channel.rs (Tokio TCP+TLS fallback).md",
+      "x": 20,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g1",
+      "type": "group",
+      "label": "Security & Privacy",
+      "x": 960,
+      "y": 0,
+      "width": 880,
+      "height": 520,
+      "color": "2"
+    },
+    {
+      "id": "n_banksystemrust_plan_audit_trail",
+      "type": "file",
+      "file": "Audit Trail & Non-Repudiation.md",
+      "x": 980,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_encrypted_p2p_tunnel",
+      "type": "file",
+      "file": "Encrypted P2P Data Tunnel.md",
+      "x": 1180,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_bottleneck_hsm_throughput",
+      "type": "file",
+      "file": "HSM Signing Throughput Ceiling.md",
+      "x": 1380,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_skill_perf_hsm_10ms",
+      "type": "file",
+      "file": "HSM signing  10ms.md",
+      "x": 980,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_key_management_hsm",
+      "type": "file",
+      "file": "Key Management & HSM Integration.md",
+      "x": 1180,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_vuln_log_injection",
+      "type": "file",
+      "file": "Log Injection  Audit Tampering.md",
+      "x": 1380,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_security_no_raw_secrets",
+      "type": "file",
+      "file": "No raw strings for secrets (SecretStringZeroize).md",
+      "x": 980,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_pdpa_compliance",
+      "type": "file",
+      "file": "PDPA Compliance (Right to Erasure).md",
+      "x": 1180,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_permissioned_blockchain",
+      "type": "file",
+      "file": "Permissioned Blockchain (Substrate).md",
+      "x": 1380,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_vuln_timing_attack",
+      "type": "file",
+      "file": "Side-Channel Timing Attack on Crypto.md",
+      "x": 980,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_zero_data_on_chain",
+      "type": "file",
+      "file": "Zero Data on Chain (PII exclusion).md",
+      "x": 1180,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_security_constant_time",
+      "type": "file",
+      "file": "constant_time_eq for sensitive data comparison.md",
+      "x": 1380,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g2",
+      "type": "group",
+      "label": "Infrastructure Security",
+      "x": 1920,
+      "y": 0,
+      "width": 880,
+      "height": 520,
+      "color": "3"
+    },
+    {
+      "id": "n_banksystemrust_skill_approved_crates",
+      "type": "file",
+      "file": "Approved security-vetted crates.md",
+      "x": 1940,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_conflict_resolution",
+      "type": "file",
+      "file": "Conflict Resolution (last-writer-wins, CRDT).md",
+      "x": 2140,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_consensus_finality",
+      "type": "file",
+      "file": "Consensus & Finality (PBFTBABEGRANDPA).md",
+      "x": 2340,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_gap_distributed_atomicity",
+      "type": "file",
+      "file": "Distributed Transaction Atomicity (saga pattern).md",
+      "x": 1940,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_ntp_sync",
+      "type": "file",
+      "file": "NTP Synchronization.md",
+      "x": 2140,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_network_segmentation",
+      "type": "file",
+      "file": "Network Segmentation.md",
+      "x": 2340,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_rolling_upgrade",
+      "type": "file",
+      "file": "Rolling Upgrade & Zero-Downtime Deployment.md",
+      "x": 1940,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_vuln_stale_cert",
+      "type": "file",
+      "file": "Stale Certificate  CRL Propagation Delay.md",
+      "x": 2140,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_supply_chain_security",
+      "type": "file",
+      "file": "Supply Chain Security (cargo vet).md",
+      "x": 2340,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_mtls_cert_pinning",
+      "type": "file",
+      "file": "mTLS + Certificate Pinning.md",
+      "x": 1940,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g3",
+      "type": "group",
+      "label": "QUIC/TCP Protocol",
+      "x": 2880,
+      "y": 0,
+      "width": 660,
+      "height": 420,
+      "color": "4"
+    },
+    {
+      "id": "n_banksystemrust_plan_gap_lb_blind_spot",
+      "type": "file",
+      "file": "Load Balancer Blind Spot (no HTTP3 support).md",
+      "x": 2900,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_vuln_quic_amplification",
+      "type": "file",
+      "file": "QUIC Amplification Attack.md",
+      "x": 3100,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_gap_quic_interop",
+      "type": "file",
+      "file": "QUIC Library Interop (quinn vs EnvoyNGINX).md",
+      "x": 3300,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_quic_core_protocol",
+      "type": "file",
+      "file": "QUIC as core protocol (0-RTT  1-RTT).md",
+      "x": 2900,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_skill_perf_quic_50ms",
+      "type": "file",
+      "file": "QUIC connection  50ms (0-RTT).md",
+      "x": 3100,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_quic_tcp_autoswitch",
+      "type": "file",
+      "file": "QUICTCP Auto-Switch (Fallback Mechanism).md",
+      "x": 3300,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_bottleneck_quic_fallback",
+      "type": "file",
+      "file": "QUICTCP Fallback Overshoot bottleneck.md",
+      "x": 2900,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_skill_perf_tcp_200ms",
+      "type": "file",
+      "file": "TCP fallback  200ms.md",
+      "x": 3100,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g4",
+      "type": "group",
+      "label": "Legacy Integration",
+      "x": 0,
+      "y": 700,
+      "width": 660,
+      "height": 400,
+      "color": "5"
+    },
+    {
+      "id": "n_banksystemrust_plan_async_core",
+      "type": "file",
+      "file": "Asynchronous Core (tokio runtime).md",
+      "x": 20,
+      "y": 780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_gap_error_semantics",
+      "type": "file",
+      "file": "Error Semantics Mapping (legacy vs GraphQL).md",
+      "x": 220,
+      "y": 780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_gap_schema_divergence",
+      "type": "file",
+      "file": "Identity Schema Divergence (per-bank schemas).md",
+      "x": 420,
+      "y": 780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_bottleneck_legacy_io",
+      "type": "file",
+      "file": "Legacy Core Banking IO bottleneck.md",
+      "x": 20,
+      "y": 860,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_gap_legacy_translation",
+      "type": "file",
+      "file": "Legacy Protocol Translation (ISO 8583SOAPMQ).md",
+      "x": 220,
+      "y": 860,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_gap_sync_async",
+      "type": "file",
+      "file": "Sync-Async Mismatch (blocking vs event-driven).md",
+      "x": 420,
+      "y": 860,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g5",
+      "type": "group",
+      "label": "Error Handling",
+      "x": 960,
+      "y": 700,
+      "width": 600,
+      "height": 400,
+      "color": "6"
+    },
+    {
+      "id": "n_banksystemrust_agents_error_propagation",
+      "type": "file",
+      "file": "Error propagation with  operator.md",
+      "x": 980,
+      "y": 780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_no_unwrap",
+      "type": "file",
+      "file": "No unwrap() in library code.md",
+      "x": 1180,
+      "y": 780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_vuln_panic_safety",
+      "type": "file",
+      "file": "Panic Safety in Rust (catch_unwind).md",
+      "x": 1380,
+      "y": 780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_thiserror_pattern",
+      "type": "file",
+      "file": "thiserror for domain errors.md",
+      "x": 980,
+      "y": 860,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g6",
+      "type": "group",
+      "label": "Resilience & Monitoring",
+      "x": 1920,
+      "y": 700,
+      "width": 600,
+      "height": 400,
+      "color": "1"
+    },
+    {
+      "id": "n_banksystemrust_skill_circuit_breaker",
+      "type": "file",
+      "file": "Circuit breaker pattern (HSM failure).md",
+      "x": 1940,
+      "y": 780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_skill_graceful_degradation",
+      "type": "file",
+      "file": "Graceful degradation (blockchain offline queue).md",
+      "x": 2140,
+      "y": 780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_monitoring_observability",
+      "type": "file",
+      "file": "Monitoring, Observability & Alerting.md",
+      "x": 2340,
+      "y": 780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_rate_limiting_circuit_breaker",
+      "type": "file",
+      "file": "Rate Limiting & Circuit Breaker (production).md",
+      "x": 1940,
+      "y": 860,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g7",
+      "type": "group",
+      "label": "GraphQL Security",
+      "x": 2880,
+      "y": 700,
+      "width": 600,
+      "height": 400,
+      "color": "2"
+    },
+    {
+      "id": "n_banksystemrust_plan_bottleneck_graphql_n1",
+      "type": "file",
+      "file": "GraphQL N+1 Query Problem.md",
+      "x": 2900,
+      "y": 780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_vuln_graphql_depth",
+      "type": "file",
+      "file": "GraphQL Query DepthComplexity Attack.md",
+      "x": 3100,
+      "y": 780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_skill_perf_graphql_100ms",
+      "type": "file",
+      "file": "GraphQL query  100ms P99.md",
+      "x": 3300,
+      "y": 780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g8",
+      "type": "group",
+      "label": "Fraud & Compliance",
+      "x": 0,
+      "y": 1180,
+      "width": 600,
+      "height": 400,
+      "color": "3"
+    },
+    {
+      "id": "n_banksystemrust_plan_cross_border_data",
+      "type": "file",
+      "file": "Cross-Border Data Transfer (GDPRChina DSL).md",
+      "x": 20,
+      "y": 1260,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_liveness_detection",
+      "type": "file",
+      "file": "Liveness Detection (anti-deepfake).md",
+      "x": 220,
+      "y": 1260,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_plan_vuln_toctou",
+      "type": "file",
+      "file": "TOCTOU (Time-of-Check to Time-of-Use).md",
+      "x": 420,
+      "y": 1260,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g9",
+      "type": "group",
+      "label": "Testing",
+      "x": 960,
+      "y": 1180,
+      "width": 600,
+      "height": 400,
+      "color": "4"
+    },
+    {
+      "id": "n_banksystemrust_skill_code_changes_checklist",
+      "type": "file",
+      "file": "Code changes checklist.md",
+      "x": 980,
+      "y": 1260,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_agents_test_both_quic_tcp",
+      "type": "file",
+      "file": "Test both QUIC and TCP paths.md",
+      "x": 1180,
+      "y": 1260,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g10",
+      "type": "group",
+      "label": "RTK Optimization",
+      "x": 1920,
+      "y": 1180,
+      "width": 600,
+      "height": 400,
+      "color": "5"
+    },
+    {
+      "id": "n_banksystemrust_claude_rtk",
+      "type": "file",
+      "file": "RTK (Rust Token Killer).md",
+      "x": 1940,
+      "y": 1260,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_banksystemrust_claude_token_optimization",
+      "type": "file",
+      "file": "Token savings 60-90%.md",
+      "x": 2140,
+      "y": 1260,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g11",
+      "type": "group",
+      "label": "Async State",
+      "x": 2880,
+      "y": 1180,
+      "width": 600,
+      "height": 400,
+      "color": "6"
+    },
+    {
+      "id": "n_banksystemrust_agents_shared_state_pattern",
+      "type": "file",
+      "file": "ArcT  ArcRwLockT shared state pattern.md",
+      "x": 2900,
+      "y": 1260,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g12",
+      "type": "group",
+      "label": "Async Concurrency",
+      "x": 0,
+      "y": 1660,
+      "width": 600,
+      "height": 400,
+      "color": "1"
+    },
+    {
+      "id": "n_banksystemrust_agents_tokio_select",
+      "type": "file",
+      "file": "tokioselect! for concurrency.md",
+      "x": 20,
+      "y": 1740,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g13",
+      "type": "group",
+      "label": "API Versioning",
+      "x": 960,
+      "y": 1660,
+      "width": 600,
+      "height": 400,
+      "color": "2"
+    },
+    {
+      "id": "n_banksystemrust_plan_api_versioning",
+      "type": "file",
+      "file": "API Versioning & Backward Compatibility.md",
+      "x": 980,
+      "y": 1740,
+      "width": 180,
+      "height": 60
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_banksystemrust_agents_graphql_api_gateway_banksystemrust_agents_main_rs",
+      "fromNode": "n_banksystemrust_agents_graphql_api_gateway",
+      "toNode": "n_banksystemrust_agents_main_rs",
+      "label": "implements [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_graphql_api_gateway_banksystemrust_agents_schema_rs",
+      "fromNode": "n_banksystemrust_agents_graphql_api_gateway",
+      "toNode": "n_banksystemrust_agents_schema_rs",
+      "label": "implements [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_graphql_api_gateway_banksystemrust_plan_three_layer_arch",
+      "fromNode": "n_banksystemrust_agents_graphql_api_gateway",
+      "toNode": "n_banksystemrust_plan_three_layer_arch",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_graphql_api_gateway_banksystemrust_skill_trigger_words",
+      "fromNode": "n_banksystemrust_agents_graphql_api_gateway",
+      "toNode": "n_banksystemrust_skill_trigger_words",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_bank_node_service_banksystemrust_agents_p2p_quic_rs",
+      "fromNode": "n_banksystemrust_agents_bank_node_service",
+      "toNode": "n_banksystemrust_agents_p2p_quic_rs",
+      "label": "implements [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_bank_node_service_banksystemrust_plan_three_layer_arch",
+      "fromNode": "n_banksystemrust_agents_bank_node_service",
+      "toNode": "n_banksystemrust_plan_three_layer_arch",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_bank_node_service_banksystemrust_skill_trigger_words",
+      "fromNode": "n_banksystemrust_agents_bank_node_service",
+      "toNode": "n_banksystemrust_skill_trigger_words",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_blockchain_adapter_banksystemrust_agents_blockchain_rs",
+      "fromNode": "n_banksystemrust_agents_blockchain_adapter",
+      "toNode": "n_banksystemrust_agents_blockchain_rs",
+      "label": "implements [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_blockchain_adapter_banksystemrust_plan_three_layer_arch",
+      "fromNode": "n_banksystemrust_agents_blockchain_adapter",
+      "toNode": "n_banksystemrust_plan_three_layer_arch",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_schema_rs_banksystemrust_agents_blockchain_rs",
+      "fromNode": "n_banksystemrust_agents_schema_rs",
+      "toNode": "n_banksystemrust_agents_blockchain_rs",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_schema_rs_banksystemrust_agents_identity_rs",
+      "fromNode": "n_banksystemrust_agents_schema_rs",
+      "toNode": "n_banksystemrust_agents_identity_rs",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_identity_rs_banksystemrust_agents_crypto_rs",
+      "fromNode": "n_banksystemrust_agents_identity_rs",
+      "toNode": "n_banksystemrust_agents_crypto_rs",
+      "label": "shares_data_with [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_identity_rs_banksystemrust_plan_gap_schema_divergence",
+      "fromNode": "n_banksystemrust_agents_identity_rs",
+      "toNode": "n_banksystemrust_plan_gap_schema_divergence",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_blockchain_rs_banksystemrust_agents_crypto_rs",
+      "fromNode": "n_banksystemrust_agents_blockchain_rs",
+      "toNode": "n_banksystemrust_agents_crypto_rs",
+      "label": "shares_data_with [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_p2p_quic_rs_banksystemrust_agents_quic_channel_rs",
+      "fromNode": "n_banksystemrust_agents_p2p_quic_rs",
+      "toNode": "n_banksystemrust_agents_quic_channel_rs",
+      "label": "implements [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_p2p_quic_rs_banksystemrust_agents_tcp_channel_rs",
+      "fromNode": "n_banksystemrust_agents_p2p_quic_rs",
+      "toNode": "n_banksystemrust_agents_tcp_channel_rs",
+      "label": "implements [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_thiserror_pattern_banksystemrust_agents_error_propagation",
+      "fromNode": "n_banksystemrust_agents_thiserror_pattern",
+      "toNode": "n_banksystemrust_agents_error_propagation",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_error_propagation_banksystemrust_agents_no_unwrap",
+      "fromNode": "n_banksystemrust_agents_error_propagation",
+      "toNode": "n_banksystemrust_agents_no_unwrap",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_security_no_raw_secrets_banksystemrust_agents_security_constant_time",
+      "fromNode": "n_banksystemrust_agents_security_no_raw_secrets",
+      "toNode": "n_banksystemrust_agents_security_constant_time",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_security_no_raw_secrets_banksystemrust_plan_pdpa_compliance",
+      "fromNode": "n_banksystemrust_agents_security_no_raw_secrets",
+      "toNode": "n_banksystemrust_plan_pdpa_compliance",
+      "label": "conceptually_related_to [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_security_constant_time_banksystemrust_plan_vuln_timing_attack",
+      "fromNode": "n_banksystemrust_agents_security_constant_time",
+      "toNode": "n_banksystemrust_plan_vuln_timing_attack",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_no_unwrap_banksystemrust_plan_vuln_panic_safety",
+      "fromNode": "n_banksystemrust_agents_no_unwrap",
+      "toNode": "n_banksystemrust_plan_vuln_panic_safety",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_agents_test_both_quic_tcp_banksystemrust_skill_code_changes_checklist",
+      "fromNode": "n_banksystemrust_agents_test_both_quic_tcp",
+      "toNode": "n_banksystemrust_skill_code_changes_checklist",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_claude_rtk_banksystemrust_claude_token_optimization",
+      "fromNode": "n_banksystemrust_claude_rtk",
+      "toNode": "n_banksystemrust_claude_token_optimization",
+      "label": "implements [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_skill_circuit_breaker_banksystemrust_plan_rate_limiting_circuit_breaker",
+      "fromNode": "n_banksystemrust_skill_circuit_breaker",
+      "toNode": "n_banksystemrust_plan_rate_limiting_circuit_breaker",
+      "label": "semantically_similar_to [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_skill_graceful_degradation_banksystemrust_plan_rate_limiting_circuit_breaker",
+      "fromNode": "n_banksystemrust_skill_graceful_degradation",
+      "toNode": "n_banksystemrust_plan_rate_limiting_circuit_breaker",
+      "label": "conceptually_related_to [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_skill_approved_crates_banksystemrust_plan_supply_chain_security",
+      "fromNode": "n_banksystemrust_skill_approved_crates",
+      "toNode": "n_banksystemrust_plan_supply_chain_security",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_skill_perf_quic_50ms_banksystemrust_plan_quic_core_protocol",
+      "fromNode": "n_banksystemrust_skill_perf_quic_50ms",
+      "toNode": "n_banksystemrust_plan_quic_core_protocol",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_skill_perf_tcp_200ms_banksystemrust_plan_quic_tcp_autoswitch",
+      "fromNode": "n_banksystemrust_skill_perf_tcp_200ms",
+      "toNode": "n_banksystemrust_plan_quic_tcp_autoswitch",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_skill_perf_graphql_100ms_banksystemrust_plan_bottleneck_graphql_n1",
+      "fromNode": "n_banksystemrust_skill_perf_graphql_100ms",
+      "toNode": "n_banksystemrust_plan_bottleneck_graphql_n1",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_skill_perf_hsm_10ms_banksystemrust_plan_bottleneck_hsm_throughput",
+      "fromNode": "n_banksystemrust_skill_perf_hsm_10ms",
+      "toNode": "n_banksystemrust_plan_bottleneck_hsm_throughput",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_zero_data_on_chain_banksystemrust_plan_pdpa_compliance",
+      "fromNode": "n_banksystemrust_plan_zero_data_on_chain",
+      "toNode": "n_banksystemrust_plan_pdpa_compliance",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_zero_data_on_chain_banksystemrust_plan_permissioned_blockchain",
+      "fromNode": "n_banksystemrust_plan_zero_data_on_chain",
+      "toNode": "n_banksystemrust_plan_permissioned_blockchain",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_encrypted_p2p_tunnel_banksystemrust_plan_permissioned_blockchain",
+      "fromNode": "n_banksystemrust_plan_encrypted_p2p_tunnel",
+      "toNode": "n_banksystemrust_plan_permissioned_blockchain",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_permissioned_blockchain_banksystemrust_plan_audit_trail",
+      "fromNode": "n_banksystemrust_plan_permissioned_blockchain",
+      "toNode": "n_banksystemrust_plan_audit_trail",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_quic_core_protocol_banksystemrust_plan_gap_lb_blind_spot",
+      "fromNode": "n_banksystemrust_plan_quic_core_protocol",
+      "toNode": "n_banksystemrust_plan_gap_lb_blind_spot",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_quic_core_protocol_banksystemrust_plan_quic_tcp_autoswitch",
+      "fromNode": "n_banksystemrust_plan_quic_core_protocol",
+      "toNode": "n_banksystemrust_plan_quic_tcp_autoswitch",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_quic_core_protocol_banksystemrust_plan_vuln_quic_amplification",
+      "fromNode": "n_banksystemrust_plan_quic_core_protocol",
+      "toNode": "n_banksystemrust_plan_vuln_quic_amplification",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_quic_tcp_autoswitch_banksystemrust_plan_bottleneck_quic_fallback",
+      "fromNode": "n_banksystemrust_plan_quic_tcp_autoswitch",
+      "toNode": "n_banksystemrust_plan_bottleneck_quic_fallback",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_async_core_banksystemrust_plan_gap_sync_async",
+      "fromNode": "n_banksystemrust_plan_async_core",
+      "toNode": "n_banksystemrust_plan_gap_sync_async",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_audit_trail_banksystemrust_plan_key_management_hsm",
+      "fromNode": "n_banksystemrust_plan_audit_trail",
+      "toNode": "n_banksystemrust_plan_key_management_hsm",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_audit_trail_banksystemrust_plan_vuln_log_injection",
+      "fromNode": "n_banksystemrust_plan_audit_trail",
+      "toNode": "n_banksystemrust_plan_vuln_log_injection",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_rate_limiting_circuit_breaker_banksystemrust_plan_monitoring_observability",
+      "fromNode": "n_banksystemrust_plan_rate_limiting_circuit_breaker",
+      "toNode": "n_banksystemrust_plan_monitoring_observability",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_key_management_hsm_banksystemrust_plan_bottleneck_hsm_throughput",
+      "fromNode": "n_banksystemrust_plan_key_management_hsm",
+      "toNode": "n_banksystemrust_plan_bottleneck_hsm_throughput",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_rolling_upgrade_banksystemrust_plan_network_segmentation",
+      "fromNode": "n_banksystemrust_plan_rolling_upgrade",
+      "toNode": "n_banksystemrust_plan_network_segmentation",
+      "label": "conceptually_related_to [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_mtls_cert_pinning_banksystemrust_plan_network_segmentation",
+      "fromNode": "n_banksystemrust_plan_mtls_cert_pinning",
+      "toNode": "n_banksystemrust_plan_network_segmentation",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_mtls_cert_pinning_banksystemrust_plan_supply_chain_security",
+      "fromNode": "n_banksystemrust_plan_mtls_cert_pinning",
+      "toNode": "n_banksystemrust_plan_supply_chain_security",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_mtls_cert_pinning_banksystemrust_plan_vuln_stale_cert",
+      "fromNode": "n_banksystemrust_plan_mtls_cert_pinning",
+      "toNode": "n_banksystemrust_plan_vuln_stale_cert",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_network_segmentation_banksystemrust_plan_ntp_sync",
+      "fromNode": "n_banksystemrust_plan_network_segmentation",
+      "toNode": "n_banksystemrust_plan_ntp_sync",
+      "label": "conceptually_related_to [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_ntp_sync_banksystemrust_plan_consensus_finality",
+      "fromNode": "n_banksystemrust_plan_ntp_sync",
+      "toNode": "n_banksystemrust_plan_consensus_finality",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_consensus_finality_banksystemrust_plan_conflict_resolution",
+      "fromNode": "n_banksystemrust_plan_consensus_finality",
+      "toNode": "n_banksystemrust_plan_conflict_resolution",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_conflict_resolution_banksystemrust_plan_gap_distributed_atomicity",
+      "fromNode": "n_banksystemrust_plan_conflict_resolution",
+      "toNode": "n_banksystemrust_plan_gap_distributed_atomicity",
+      "label": "conceptually_related_to [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_liveness_detection_banksystemrust_plan_cross_border_data",
+      "fromNode": "n_banksystemrust_plan_liveness_detection",
+      "toNode": "n_banksystemrust_plan_cross_border_data",
+      "label": "conceptually_related_to [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_liveness_detection_banksystemrust_plan_vuln_toctou",
+      "fromNode": "n_banksystemrust_plan_liveness_detection",
+      "toNode": "n_banksystemrust_plan_vuln_toctou",
+      "label": "conceptually_related_to [INFERRED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_bottleneck_graphql_n1_banksystemrust_plan_vuln_graphql_depth",
+      "fromNode": "n_banksystemrust_plan_bottleneck_graphql_n1",
+      "toNode": "n_banksystemrust_plan_vuln_graphql_depth",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_bottleneck_legacy_io_banksystemrust_plan_gap_sync_async",
+      "fromNode": "n_banksystemrust_plan_bottleneck_legacy_io",
+      "toNode": "n_banksystemrust_plan_gap_sync_async",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_gap_legacy_translation_banksystemrust_plan_gap_error_semantics",
+      "fromNode": "n_banksystemrust_plan_gap_legacy_translation",
+      "toNode": "n_banksystemrust_plan_gap_error_semantics",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_gap_legacy_translation_banksystemrust_plan_gap_sync_async",
+      "fromNode": "n_banksystemrust_plan_gap_legacy_translation",
+      "toNode": "n_banksystemrust_plan_gap_sync_async",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_gap_sync_async_banksystemrust_plan_gap_distributed_atomicity",
+      "fromNode": "n_banksystemrust_plan_gap_sync_async",
+      "toNode": "n_banksystemrust_plan_gap_distributed_atomicity",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_gap_error_semantics_banksystemrust_plan_gap_schema_divergence",
+      "fromNode": "n_banksystemrust_plan_gap_error_semantics",
+      "toNode": "n_banksystemrust_plan_gap_schema_divergence",
+      "label": "conceptually_related_to [EXTRACTED]"
+    },
+    {
+      "id": "e_banksystemrust_plan_gap_quic_interop_banksystemrust_plan_gap_lb_blind_spot",
+      "fromNode": "n_banksystemrust_plan_gap_quic_interop",
+      "toNode": "n_banksystemrust_plan_gap_lb_blind_spot",
+      "label": "conceptually_related_to [EXTRACTED]"
+    }
+  ]
+}

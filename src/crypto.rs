@@ -8,7 +8,7 @@
 // นำเข้าไลบรารีเข้ารหัส AES-GCM และ ED25519
 use aes_gcm::aead::Aead;
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -116,7 +116,7 @@ pub fn sign(payload: &[u8], keypair: &KeyPair) -> Result<SignedPayload, CryptoEr
     })
 }
 
-// ตรวจสอบลายเซ็นดิจิทัลด้วยกุญแจสาธารณะ
+// ตรวจสอบลายเซ็นดิจิทัลด้วยกุญแจสาธารณะ (verify_strict = constant-time)
 pub fn verify(signed: &SignedPayload) -> Result<bool, CryptoError> {
     let verifying_key = VerifyingKey::from_bytes(
         signed
@@ -127,7 +127,8 @@ pub fn verify(signed: &SignedPayload) -> Result<bool, CryptoError> {
     )?;
     let signature = Signature::from_slice(&signed.signature)
         .map_err(|e| CryptoError::VerificationFailed(e.to_string()))?;
-    Ok(verifying_key.verify(&signed.payload, &signature).is_ok())
+    // verify_strict uses constant-time batchable verification (ป้องกัน timing side-channel)
+    Ok(verifying_key.verify_strict(&signed.payload, &signature).is_ok())
 }
 
 // คำนวณค่าแฮช SHA-256 ของข้อมูล

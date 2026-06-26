@@ -6,10 +6,66 @@
 // คริปโต: ED25519 (signing), AES-GCM (encryption), SHA-256 (hashing)
 
 // การเชื่อมต่อ QUIC (Quick UDP Internet Connections) ด้วยไลบรารี Quinn
+use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::atomic::AtomicU32;
+use std::sync::Arc;
+use std::time::Instant;
 
 use crate::network::{NetworkChannel, NetworkError, Protocol};
+use tokio::sync::{Mutex, Semaphore};
 use tracing::{info, warn};
+
+// ป้องกัน QUIC Amplification Attack — จำกัดจำนวน concurrent connections
+const MAX_CONCURRENT_CONNS: usize = 1024;
+const MAX_CONN_RATE_PER_IP: u32 = 50;
+const CONN_RATE_WINDOW_SECS: u64 = 1;
+const MAX_RESPONSE_BYTES: usize = 1_048_576; // 1MB
+
+// สถานะการจำกัดอัตราการเชื่อมต่อต่อ IP
+pub struct QuicRateLimiter {
+    conn_semaphore: Arc<Semaphore>,
+    per_ip_counts: Mutex<HashMap<SocketAddr, (u32, Instant)>>,
+    total_accepted: AtomicU32,
+    total_rejected: AtomicU32,
+}
+
+impl QuicRateLimiter {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
+            conn_semaphore: Arc::new(Semaphore::new(MAX_CONCURRENT_CONNS)),
+            per_ip_counts: Mutex::new(HashMap::new()),
+            total_accepted: AtomicU32::new(0),
+            total_rejected: AtomicU32::new(0),
+        })
+    }
+
+    pub async fn check_and_acquire(&self, remote: SocketAddr) -> Result<tokio::sync::OwnedSemaphorePermit, ()> {
+        let mut ip_counts = self.per_ip_counts.lock().await;
+        let now = Instant::now();
+        let (count, last) = ip_counts.entry(remote).or_insert((0, now));
+        if now.duration_since(*last).as_secs() >= CONN_RATE_WINDOW_SECS {
+            *count = 0;
+            *last = now;
+        }
+        *count += 1;
+        if *count > MAX_CONN_RATE_PER_IP {
+            self.total_rejected.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            return Err(());
+        }
+        drop(ip_counts);
+
+        let permit = self.conn_semaphore
+            .clone()
+            .try_acquire_owned()
+            .map_err(|_| {
+                self.total_rejected.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            })?;
+
+        self.total_accepted.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Ok(permit)
+    }
+}
 
 // เชื่อมต่อ QUIC ไปยังเซิร์ฟเวอร์ปลายทาง
 pub async fn connect_quic(
@@ -69,7 +125,10 @@ pub async fn start_quic_server(
 }
 
 // จัดการการเชื่อมต่อ QUIC ขาเข้า - รับข้อมูลและตอบกลับ
-pub async fn handle_quic_connection(connection: quinn::Connection) {
+pub async fn handle_quic_connection(
+    connection: quinn::Connection,
+    _permit: tokio::sync::OwnedSemaphorePermit,
+) {
     let remote = connection.remote_address();
     info!(remote = %remote, "QUIC connection accepted");
 
@@ -77,11 +136,18 @@ pub async fn handle_quic_connection(connection: quinn::Connection) {
         match connection.accept_bi().await {
             Ok((mut send, mut recv)) => {
                 tokio::spawn(async move {
-                    match recv.read_to_end(65536).await {
+                    match recv.read_to_end(MAX_RESPONSE_BYTES).await {
                         Ok(buf) => {
+                            if buf.len() > MAX_RESPONSE_BYTES {
+                                warn!(remote = %remote, len = %buf.len(), "QUIC request exceeds size limit");
+                                return;
+                            }
                             info!(remote = %remote, len = %buf.len(), "QUIC data received");
                             let response = crate::network::process_p2p_message(&buf);
-                            if let Err(e) = send.write_all(response.as_bytes()).await {
+                            if response.len() > MAX_RESPONSE_BYTES {
+                                warn!(remote = %remote, "QUIC response exceeds size limit, truncating");
+                                let _ = send.write_all(b"ERROR: Response too large").await;
+                            } else if let Err(e) = send.write_all(response.as_bytes()).await {
                                 warn!(error = %e, "QUIC send response failed");
                             }
                             let _ = send.finish();
@@ -100,4 +166,27 @@ pub async fn handle_quic_connection(connection: quinn::Connection) {
     }
 
     info!(remote = %remote, "QUIC connection closed");
+    // permit dropped here → connection slot freed
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_rate_limiter_accepts() {
+        let limiter = QuicRateLimiter::new();
+        let addr: SocketAddr = "127.0.0.1:12345".parse().unwrap();
+        assert!(limiter.check_and_acquire(addr).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_rate_limiter_rejects_excessive() {
+        let limiter = QuicRateLimiter::new();
+        let addr: SocketAddr = "127.0.0.1:12346".parse().unwrap();
+        for _ in 0..MAX_CONN_RATE_PER_IP {
+            let _permit = limiter.check_and_acquire(addr).await.unwrap();
+        }
+        assert!(limiter.check_and_acquire(addr).await.is_err());
+    }
 }

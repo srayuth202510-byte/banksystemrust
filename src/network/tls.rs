@@ -7,8 +7,11 @@
 
 // การจัดการ TLS (certificate, การเข้ารหัส, การกำหนดค่า QUIC + rustls)
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
+use subtle::ConstantTimeEq;
 use thiserror::Error;
+use zeroize::Zeroize;
 
 // ข้อผิดพลาดเกี่ยวกับการจัดการ TLS Certificate
 #[derive(Debug, Error)]
@@ -48,6 +51,25 @@ impl std::fmt::Debug for TlsContext {
 }
 
 impl TlsContext {
+    // คำนวณ SHA-256 fingerprint ของใบรับรองแรกใน chain
+    pub fn cert_fingerprint(&self) -> Result<[u8; 32], TlsError> {
+        let der = self
+            .certs
+            .first()
+            .ok_or_else(|| TlsError::CertLoading("no certificates available".into()))?;
+        Ok(Sha256::digest(der.as_ref()).into())
+    }
+
+    // ตรวจสอบว่า fingerprint ของ peer cert ตรงกับ expected pin หรือไม่
+    // ป้องกัน Stale Certificate / CRL Propagation Delay
+    pub fn verify_peer_cert_pinned(expected_pin: &[u8; 32], end_entity: &CertificateDer) -> bool {
+        let actual = Sha256::digest(end_entity.as_ref());
+        let mut expected = *expected_pin;
+        let result = actual.as_slice().ct_eq(&expected).into();
+        expected.zeroize();
+        result
+    }
+
     // สร้างใบรับรองแบบ Self-Signed สำหรับการพัฒนาและทดสอบ
     pub fn generate_self_signed() -> Result<Self, TlsError> {
         let key_pair =
@@ -121,6 +143,9 @@ impl TlsContext {
         let mut config = quinn::ServerConfig::with_crypto(Arc::new(quic_config));
         let mut transport = quinn::TransportConfig::default();
         transport.max_concurrent_uni_streams(0u32.into());
+        transport.max_concurrent_bidi_streams(16u32.into());
+        transport.receive_window(524_288u32.into());
+        transport.send_window(524_288u32.into());
         config.transport_config(Arc::new(transport));
         Ok(config)
     }

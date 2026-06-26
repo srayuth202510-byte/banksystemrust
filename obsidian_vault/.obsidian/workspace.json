@@ -1,0 +1,209 @@
+{
+  "main": {
+    "id": "526d4ea0b66b6209",
+    "type": "split",
+    "children": [
+      {
+        "id": "92ede1f7b4697f0c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1d0039e4b7405c3a",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "eca2b5a88d407ee8",
+    "type": "split",
+    "children": [
+      {
+        "id": "4058f096e9204780",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b444d99c79b92d14",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "6d1ee0a3a200c884",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "ad08f5a197619ae4",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "c2249e378b7847f9",
+    "type": "split",
+    "children": [
+      {
+        "id": "3dfc926d2589babe",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "021fa599b01f9663",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "fd96479801c31139",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "05dc6c4e68d61572",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "7c36b1f9198457d5",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "f869b689fe3c96bb",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "1d0039e4b7405c3a",
+  "lastOpenFiles": [
+    "Errors/NetworkError_ConnectionLost.md",
+    "Errors/NetworkError_TlsError.md",
+    "Errors/NetworkError_Timeout.md",
+    "Errors/NetworkError_BothFailed.md",
+    "Errors/NetworkError_TcpFailed.md",
+    "Errors/NetworkError_QuicFailed.md",
+    "Errors/TlsError_InvalidKey.md",
+    "Errors/TlsError_CertLoading.md",
+    "Errors/TlsError_CertGeneration.md",
+    "Errors/CryptoError_HsmError.md",
+    "Errors/CryptoError_InvalidKey.md",
+    "Errors/CryptoError_KeyGenerationFailed.md",
+    "Errors/CryptoError_DecryptionFailed.md",
+    "Errors/CryptoError_EncryptionFailed.md",
+    "Errors/CryptoError_VerificationFailed.md",
+    "Errors/CryptoError_SigningFailed.md",
+    "Errors/RedisCacheError_SecretLoad.md",
+    "Errors/RedisCacheError_Serialization.md",
+    "Errors/RedisCacheError_Timeout.md",
+    "Errors/RedisCacheError_Client.md",
+    "Errors/BlockchainError_DatabaseError.md",
+    "Errors/BlockchainError_Crypto.md",
+    "Errors/BlockchainError_Http.md",
+    "Errors/BlockchainError_InvalidTransaction.md",
+    "Errors/BlockchainError_ConsensusFailed.md",
+    "Errors/BlockchainError_Timeout.md",
+    "Errors"
+  ]
+}

@@ -186,6 +186,19 @@ impl ConnectionChannel for NetworkChannel {
     }
 }
 
+// ป้องกัน Log Injection — sanitize control characters ที่อาจถูกใช้โจมตี structured log parser
+fn sanitize_log_input(s: &str) -> String {
+    s.chars()
+        .map(|c| {
+            if c.is_control() && c != '\t' {
+                format!("\\x{:02x}", c as u8)
+            } else {
+                c.to_string()
+            }
+        })
+        .collect()
+}
+
 // ประมวลผลข้อความ P2P ที่ได้รับ (ตรวจสอบลายเซ็น, ส่ง ACK หรือ ERROR)
 pub fn process_p2p_message(buf: &[u8]) -> String {
     use crate::crypto;
@@ -204,7 +217,8 @@ pub fn process_p2p_message(buf: &[u8]) -> String {
                     warn!("P2P payload contains invalid UTF-8, logging hex");
                     hex::encode(&payload_clone)
                 });
-                info!(from = %msg.from_bank, payload = %payload_str, "P2P signature verified");
+                let sanitized_payload = sanitize_log_input(&payload_str);
+                info!(from = %msg.from_bank, payload = %sanitized_payload, "P2P signature verified");
                 crate::metrics::p2p_messages()
                     .with_label_values(&["in", &msg.from_bank, "Success"])
                     .inc();

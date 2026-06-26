@@ -122,15 +122,17 @@ impl RedisCache {
             })
     }
 
-    // ตรวจสอบ Rate Limit ตาม IP (ใช้ Redis INCR + EXPIRE)
-    pub async fn check_rate_limit(&self, ip: &str, limit: u64) -> Result<bool, RedisCacheError> {
+    // ตรวจสอบ Rate Limit ตาม IP (ใช้ Redis INCR + EXPIRE พร้อม burst window)
+    pub async fn check_rate_limit(&self, ip: &str, rate: u64, burst: u64) -> Result<bool, RedisCacheError> {
         let Some(client) = &self.client else {
-            return Ok(true); // Always allow if Redis is disabled (fallback handled in app)
+            return Ok(true);
         };
 
         let key = format!("ndid:ratelimit:{ip}");
+        let burst_key = format!("ndid:ratelimit:{ip}:burst");
         self.with_timeout(async {
             let mut conn = client.get_multiplexed_async_connection().await?;
+            // Rate limit: requests per second
             let count: u64 = redis::cmd("INCR").arg(&key).query_async(&mut conn).await?;
             if count == 1 {
                 let _: () = redis::cmd("EXPIRE")
@@ -139,7 +141,19 @@ impl RedisCache {
                     .query_async(&mut conn)
                     .await?;
             }
-            Ok(count <= limit)
+            if count <= rate {
+                return Ok(true);
+            }
+            // Burst allowance: ถ้าเกิน rate ให้ใช้ burst window
+            let burst_count: u64 = redis::cmd("INCR").arg(&burst_key).query_async(&mut conn).await?;
+            if burst_count == 1 {
+                let _: () = redis::cmd("EXPIRE")
+                    .arg(&burst_key)
+                    .arg(1)
+                    .query_async(&mut conn)
+                    .await?;
+            }
+            Ok(burst_count <= burst)
         })
         .await
     }

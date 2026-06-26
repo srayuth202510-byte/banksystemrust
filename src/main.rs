@@ -25,7 +25,7 @@ use opentelemetry_stdout::SpanExporter;
 use tokio::net::TcpListener;
 use tokio::sync::{Mutex as TokioMutex, broadcast};
 use tower::{BoxError, ServiceBuilder, buffer::BufferLayer};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 
@@ -46,7 +46,7 @@ struct Cli {
     config: String,
 }
 
-// แสดงหน้า GraphQL Playground สำหรับทดสอบ API
+// แสดงหน้า GraphQL Playground สำหรับทดสอบ API (ถูกปิดอัตโนมัติเมื่อ graphql_playground = false)
 async fn graphiql() -> impl IntoResponse {
     Html(GraphiQLSource::build().endpoint("/graphql").finish())
 }
@@ -55,8 +55,9 @@ async fn graphiql() -> impl IntoResponse {
 #[derive(Clone)]
 struct RateLimitState {
     redis: std::sync::Arc<RedisCache>,
-    fallback: std::sync::Arc<TokioMutex<std::collections::HashMap<std::net::IpAddr, u64>>>,
+    fallback: std::sync::Arc<TokioMutex<std::collections::HashMap<std::net::IpAddr, (u64, std::time::Instant)>>>,
     limit: u64,
+    burst: u64,
 }
 
 // Middleware สำหรับจำกัดจำนวนคำขอดู transaction ต่อ IP
@@ -69,7 +70,7 @@ async fn per_ip_rate_limiter(
     let ip = addr.ip();
     let allowed = match state
         .redis
-        .check_rate_limit(&ip.to_string(), state.limit)
+        .check_rate_limit(&ip.to_string(), state.limit, state.burst)
         .await
     {
         Ok(true) => true,
@@ -77,9 +78,14 @@ async fn per_ip_rate_limiter(
         Err(e) => {
             tracing::warn!(error = %e, "Redis rate limit failed, using fallback");
             let mut map = state.fallback.lock().await;
-            let count = map.entry(ip).or_insert(0);
+            let now = std::time::Instant::now();
+            let (count, last) = map.entry(ip).or_insert((0, now));
+            if now.duration_since(*last).as_secs() >= 1 {
+                *count = 0;
+                *last = now;
+            }
             *count += 1;
-            *count <= state.limit
+            *count <= state.burst
         }
     };
 
@@ -158,6 +164,7 @@ async fn start_quic_server(
     tls: &TlsContext,
     mut shutdown_rx: broadcast::Receiver<()>,
 ) {
+    let rate_limiter = quic_channel::QuicRateLimiter::new();
     let quic_addr = format!("0.0.0.0:{}", config.network.quic_port);
     match tls.to_quic_server_config() {
         Ok(server_config) => {
@@ -172,10 +179,20 @@ async fn start_quic_server(
                             }
                             connecting = endpoint.accept() => {
                                 if let Some(connecting) = connecting {
+                                    let limiter = rate_limiter.clone();
                                     tokio::spawn(async move {
                                         match connecting.await {
                                             Ok(connection) => {
-                                                quic_channel::handle_quic_connection(connection).await;
+                                                let remote = connection.remote_address();
+                                                match limiter.check_and_acquire(remote).await {
+                                                    Ok(permit) => {
+                                                        quic_channel::handle_quic_connection(connection, permit).await;
+                                                    }
+                                                    Err(()) => {
+                                                        warn!(remote = %remote, "QUIC connection rate limited");
+                                                        connection.close(0u32.into(), b"rate_limited");
+                                                    }
+                                                }
                                             }
                                             Err(e) => {
                                                 error!(error = %e, "QUIC accept handshake failed");
@@ -314,17 +331,31 @@ async fn main() {
         }));
 
     // ตัวทำงานพื้นหลังสำหรับส่งธุรกรรมที่ค้างอยู่ในคิวไปยัง Substrate node ซ้ำ
+    // wrap ใน task แยกเพื่อป้องกัน panic ทำลาย process (Panic Safety)
     let worker_client = blockchain_client.clone();
-    tokio::spawn(async move {
+    let worker_handle = tokio::spawn(async move {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
         loop {
             interval.tick().await;
-            worker_client.retry_all_queued().await;
+            let client = worker_client.clone();
+            let task = tokio::spawn(async move {
+                client.retry_all_queued().await;
+            });
+            if let Err(e) = task.await {
+                error!("Blockchain retry subtask panicked: {:?}", e);
+            }
         }
+    });
+    // สร้าง watcher สำหรับ worker — ถ้า worker panic จะ restart โดยอัตโนมัติ
+    tokio::spawn(async move {
+        let result = worker_handle.await;
+        error!("Blockchain worker terminated: {:?}, restarting...", result);
     });
 
     // สร้าง Schema GraphQL สำหรับ API Gateway
     let schema = async_graphql::Schema::build(QueryRoot, MutationRoot, EmptySubscription)
+        .limit_depth(8)
+        .limit_complexity(256)
         .data(p2p_node)
         .data(blockchain_client)
         .data(redis_cache.clone())
@@ -376,6 +407,7 @@ async fn main() {
             redis: redis_cache.clone(),
             fallback: std::sync::Arc::new(TokioMutex::new(std::collections::HashMap::new())),
             limit: config.server.rate_limit.per_ip_limit,
+            burst: config.server.rate_limit.burst as u64,
         }))
         .with_state(schema);
 

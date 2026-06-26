@@ -7,7 +7,7 @@
 
 // การทดสอบแบบบูรณาการ (Integration Tests) สำหรับระบบ NDID Banking
 use banksystemrust::crypto::KeyPair;
-use banksystemrust::network::quic_channel::start_quic_server;
+use banksystemrust::network::quic_channel::{start_quic_server, QuicRateLimiter};
 use banksystemrust::network::tcp_channel::start_tcp_server;
 use banksystemrust::network::tls::TlsContext;
 use banksystemrust::network::{ConnectionChannel, Protocol, connect_with_fallback};
@@ -39,11 +39,16 @@ async fn test_quic_communication() {
     let quic_config = server_tls.to_quic_server_config().unwrap();
     let endpoint = start_quic_server(&quic_addr, quic_config).await.unwrap();
 
+    let rate_limiter = QuicRateLimiter::new();
     tokio::spawn(async move {
         while let Some(connecting) = endpoint.accept().await {
+            let limiter = rate_limiter.clone();
             tokio::spawn(async move {
                 if let Ok(conn) = connecting.await {
-                    banksystemrust::network::quic_channel::handle_quic_connection(conn).await;
+                    let remote = conn.remote_address();
+                    if let Ok(permit) = limiter.check_and_acquire(remote).await {
+                        banksystemrust::network::quic_channel::handle_quic_connection(conn, permit).await;
+                    }
                 }
             });
         }
@@ -166,6 +171,8 @@ async fn test_graphql_flow() {
         banksystemrust::schema::MutationRoot,
         async_graphql::EmptySubscription,
     )
+    .limit_depth(8)
+    .limit_complexity(256)
     .data(p2p_node)
     .data(blockchain_client)
     .data(redis_cache)

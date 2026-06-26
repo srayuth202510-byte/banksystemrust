@@ -138,7 +138,7 @@ impl P2pNode {
         };
 
         let msg_bytes = serde_json::to_vec(&message)
-            .map_err(|e| P2pError::Network(network::NetworkError::TlsError(e.to_string())))?;
+            .map_err(|e| P2pError::HandshakeFailed(format!("serialization error: {e}")))?;
 
         let (channel, protocol) = network::connect_with_fallback(
             peer_addr,

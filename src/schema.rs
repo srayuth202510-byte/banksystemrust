@@ -53,7 +53,7 @@ impl QueryRoot {
             });
         }
 
-        let (tx_status, proto) = match blockchain_client.get_transaction_status(&request_id) {
+        let (tx_status, proto) = match blockchain_client.get_transaction_status(&request_id).await {
             Ok(crate::blockchain::TxStatus::Finalized) => {
                 (crate::blockchain::TxStatus::Finalized, "QUIC".to_string())
             }
@@ -106,7 +106,7 @@ impl QueryRoot {
             }));
         }
 
-        match blockchain_client.get_transaction_status(&request_id) {
+        match blockchain_client.get_transaction_status(&request_id).await {
             Ok(status) => {
                 let status_str = get_identity_status_label(&status);
                 let _ = redis_cache

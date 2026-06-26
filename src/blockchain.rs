@@ -7,7 +7,9 @@
 
 // คริปโตเคอเรนซีและบล็อกเชน - เชื่อมต่อ Substrate node สำหรับบันทึกธุรกรรม
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use thiserror::Error;
+use tokio::sync::Mutex;
 use tokio::time::{Duration, timeout};
 use tracing::{error, info, warn};
 
@@ -92,6 +94,7 @@ pub struct BlockchainClient {
     db: rocksdb::DB,
     _temp_dir: Option<tempfile::TempDir>,
     http_client: reqwest::Client,
+    queue_lock: Arc<Mutex<()>>,
 }
 
 impl BlockchainClient {
@@ -140,6 +143,7 @@ impl BlockchainClient {
             db,
             _temp_dir,
             http_client,
+            queue_lock: Arc::new(Mutex::new(())),
         })
     }
 
@@ -180,6 +184,7 @@ impl BlockchainClient {
                 let tx_bytes = postcard::to_allocvec(&tx).map_err(|e| {
                     BlockchainError::TransactionFailed(format!("serialization failed: {e}"))
                 })?;
+                let _lock = self.queue_lock.lock().await;
                 let _ = self.db.put(tx.tx_id.as_bytes(), tx_bytes);
                 Ok(TransactionReceipt {
                     tx_id: tx.tx_id,
@@ -258,12 +263,14 @@ impl BlockchainClient {
     }
 
     // จำนวนธุรกรรมที่รอส่งในคิว
-    pub fn queue_len(&self) -> usize {
+    pub async fn queue_len(&self) -> usize {
+        let _lock = self.queue_lock.lock().await;
         self.db.iterator(rocksdb::IteratorMode::Start).count()
     }
 
     // นำธุรกรรมทั้งหมดออกจากคิว
-    pub fn drain_queue(&self) -> Vec<BlockchainTransaction> {
+    pub async fn drain_queue(&self) -> Vec<BlockchainTransaction> {
+        let _lock = self.queue_lock.lock().await;
         let mut drained = Vec::new();
         for (k, v) in self.db.iterator(rocksdb::IteratorMode::Start).flatten() {
             if let Ok(tx) = postcard::from_bytes::<BlockchainTransaction>(&v) {
@@ -276,12 +283,16 @@ impl BlockchainClient {
 
     // ส่งธุรกรรมที่ค้างอยู่ในคิวทั้งหมดอีกครั้ง (เรียกเป็นระยะโดย background worker)
     pub async fn retry_all_queued(&self) {
-        let mut to_retry = Vec::new();
-        for (k, v) in self.db.iterator(rocksdb::IteratorMode::Start).flatten() {
-            if let Ok(tx) = postcard::from_bytes::<BlockchainTransaction>(&v) {
-                to_retry.push((k, tx));
+        let to_retry = {
+            let _lock = self.queue_lock.lock().await;
+            let mut pending = Vec::new();
+            for (k, v) in self.db.iterator(rocksdb::IteratorMode::Start).flatten() {
+                if let Ok(tx) = postcard::from_bytes::<BlockchainTransaction>(&v) {
+                    pending.push((k, tx));
+                }
             }
-        }
+            pending
+        };
 
         for (k, tx) in to_retry {
             let timeout_dur = Duration::from_secs(self.config.timeout_secs);
@@ -291,6 +302,7 @@ impl BlockchainClient {
                     crate::metrics::blockchain_retries()
                         .with_label_values(&["Success"])
                         .inc();
+                    let _lock = self.queue_lock.lock().await;
                     let _ = self.db.delete(&k);
                 }
                 Ok(Err(BlockchainError::NodeUnreachable(_))) | Err(_) => {
@@ -304,6 +316,7 @@ impl BlockchainClient {
                     crate::metrics::blockchain_retries()
                         .with_label_values(&["Failed"])
                         .inc();
+                    let _lock = self.queue_lock.lock().await;
                     let _ = self.db.delete(&k);
                 }
             }
@@ -311,7 +324,8 @@ impl BlockchainClient {
     }
 
     // ตรวจสอบสถานะธุรกรรม (อยู่ในคิว = Queued, ไม่อยู่ = Finalized)
-    pub fn get_transaction_status(&self, tx_id: &str) -> Result<TxStatus, BlockchainError> {
+    pub async fn get_transaction_status(&self, tx_id: &str) -> Result<TxStatus, BlockchainError> {
+        let _lock = self.queue_lock.lock().await;
         match self.db.get(tx_id.as_bytes()) {
             Ok(Some(_)) => Ok(TxStatus::Queued),
             Ok(None) => Ok(TxStatus::Finalized),
@@ -356,7 +370,7 @@ mod tests {
             .unwrap();
         let receipt = client.submit(tx).await.unwrap();
         assert!(matches!(receipt.status, TxStatus::Queued));
-        assert_eq!(client.queue_len(), 1);
+        assert_eq!(client.queue_len().await, 1);
     }
 
     #[tokio::test]
@@ -370,13 +384,13 @@ mod tests {
         let tx_id = tx.tx_id.clone();
 
         assert!(matches!(
-            client.get_transaction_status(&tx_id).unwrap(),
+            client.get_transaction_status(&tx_id).await.unwrap(),
             TxStatus::Finalized
         ));
 
         let _receipt = client.submit(tx).await.unwrap();
         assert!(matches!(
-            client.get_transaction_status(&tx_id).unwrap(),
+            client.get_transaction_status(&tx_id).await.unwrap(),
             TxStatus::Queued
         ));
     }
